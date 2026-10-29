@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="th" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#070a10">
+<title>Penguin Volatility Lab · Nasdaq-100 Quantitative Terminal</title>
+<style>
+:root {
+  /* Primitive Tokens from DESIGN.md */
+  --navy-950: #070a10;
+  --navy-900: #0a0f1d;
+  --navy-850: #0e1524;
+  --navy-800: #121a2c;
+  --navy-750: #162035;
+  --navy-700: #1e2c48;
+  --slate-500: #64748b;
+  --slate-400: #94a3b8;
+  --slate-200: #e2e8f0;
+  --slate-100: #f1f5f9;
+  --white: #ffffff;
+  --emerald-400: #34d399;
+  --emerald-500: #10b981;
+  --emerald-600: #059669;
+  --cyan-400: #22d3ee;
+  --cyan-500: #06b6d4;
+  --cyan-600: #0891b2;
+  --purple-400: #c084fc;
+  --purple-500: #a855f7;
+  --purple-600: #7c3aed;
+  --amber-400: #fbbf24;
+  --amber-500: #f59e0b;
+  --amber-600: #d97706;
+  --rose-400: #fb7185;
+  --rose-500: #f43f5e;
+  --rose-600: #e11d48;
+
+  /* Semantic DTCG Mappings */
+  --bg-canvas: var(--navy-950);
+  --bg-card: var(--navy-850);
+  --bg-subtle: var(--navy-800);
+  --bg-hover: var(--navy-750);
+  --text-primary: var(--slate-100);
+  --text-secondary: var(--slate-400);
+  --text-muted: var(--slate-500);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-highlight: rgba(255, 255, 255, 0.05);
+  --border-focus: var(--cyan-500);
+
+  /* Intent Colors */
+  --teal: var(--emerald-500);
+  --teal-bright: var(--emerald-400);
+  --teal-bg: rgba(16, 185, 129, 0.12);
+  --teal-border: rgba(16, 185, 129, 0.35);
+
+  --blue: var(--cyan-500);
+  --blue-bright: var(--cyan-400);
+  --blue-bg: rgba(6, 182, 212, 0.12);
+  --blue-border: rgba(6, 182, 212, 0.35);
+
+  --purple: var(--purple-500);
+  --purple-bright: var(--purple-400);
+  --purple-bg: rgba(168, 85, 247, 0.12);
+  --purple-border: rgba(168, 85, 247, 0.35);
+
+  --amber: var(--amber-500);
+  --amber-bright: var(--amber-400);
+  --amber-bg: rgba(245, 158, 11, 0.12);
+  --amber-border: rgba(245, 158, 11, 0.35);
+
+  --red: var(--rose-500);
+  --red-bright: var(--rose-400);
+  --red-bg: rgba(244, 63, 94, 0.12);
+  --red-border: rgba(244, 63, 94, 0.35);
+
+  --radius-sm: 6px;
+  --radius-md: 9px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+[data-theme="light"] {
+  --bg-canvas: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-subtle: #f1f5f9;
+  --bg-hover: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --border-subtle: #e2e8f0;
+  --border-highlight: rgba(0, 0, 0, 0.04);
+  --border-focus: #0284c7;
+
+  --teal: #0d9488;
+  --teal-bright: #0f766e;
+  --teal-bg: #e6fffa;
+  --teal-border: rgba(13, 148, 136, 0.35);
+
+  --blue: #0284c7;
+  --blue-bright: #0369a1;
+  --blue-bg: #e0f2fe;
+  --blue-border: rgba(2, 132, 199, 0.35);
+
+  --purple: #7c3aed;
+  --purple-bright: #6d28d9;
+  --purple-bg: #f3e8ff;
+  --purple-border: rgba(124, 58, 237, 0.35);
+
+  --amber: #d97706;
+  --amber-bright: #b45309;
+  --amber-bg: #fef3c7;
+  --amber-border: rgba(217, 119, 6, 0.35);
+
+  --red: #e11d48;
+  --red-bright: #be123c;
+  --red-bg: #ffe4e6;
+  --red-border: rgba(225, 29, 72, 0.35);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg-canvas); font-size: 13px; line-height: 1.5; min-height: 100vh; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--blue-bright); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.shell { max-width: 1600px; margin: auto; padding: 20px 24px 50px; }
+
+/* Topbar */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 14px; }
+.mark {
+  width: 44px; height: 44px; display: grid; place-items: center;
+  background: linear-gradient(135deg, #06b6d4, #3b82f6 60%, #8b5cf6);
+  color: #fff; border-radius: var(--radius-md); font-size: 15px; font-weight: 850; letter-spacing: .04em;
+  box-shadow: 0 0 16px rgba(6, 182, 212, 0.35);
+}
+.eyebrow { color: var(--teal-bright); font-size: 10px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; font-family: var(--font-mono); }
+.brand h1 { font-size: 20px; line-height: 1.2; margin: 2px 0 2px; letter-spacing: -.03em; color: var(--text-primary); font-weight: 850; }
+.subhead { color: var(--text-muted); font-size: 12px; }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.topmeta { text-align: right; color: var(--text-muted); font-size: 11px; }
+.topmeta-badges { display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.sync-schedule-pill {
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 850; letter-spacing: .05em;
+  padding: 4px 8px; border-radius: 99px; background: var(--blue-bg); color: var(--blue-bright);
+  border: 1px solid var(--blue-border);
+}
+.readonly {
+  display: inline-flex; align-items: center; gap: 6px; color: var(--teal-bright);
+  background: var(--teal-bg); border: 1px solid var(--teal-border); padding: 4px 9px;
+  border-radius: 99px; font-size: 10px; font-weight: 850; letter-spacing: .05em; font-family: var(--font-mono);
+}
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+
+/* Theme Toggle */
+.theme-toggle {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+  background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+  color: var(--text-secondary); font-size: 11.5px; font-weight: 650;
+  transition: all .15s ease;
+}
+.theme-toggle:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-focus); }
+[data-theme="dark"] .theme-icon-dark { display: none; }
+[data-theme="light"] .theme-icon-light { display: none; }
+
+/* Tabs */
+.tabs { display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px; overflow-x: auto; }
+.tabs button {
+  background: transparent; border: none; border-radius: var(--radius-sm);
+  color: var(--text-muted); padding: 7px 14px; font-size: 12px; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 6px; transition: all .15s ease; white-space: nowrap;
+}
+.tabs button:hover { color: var(--text-primary); background: var(--bg-subtle); }
+.tabs button.active { color: var(--text-primary); background: var(--bg-card); box-shadow: 0 1px 3px rgba(0,0,0,0.2); border: 1px solid var(--border-subtle); }
+
+/* Notice Banner */
+.notice {
+  background: var(--bg-card); border: 1px solid var(--border-subtle); border-left: 3px solid var(--blue);
+  border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 14px; font-size: 11.5px; color: var(--text-secondary);
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.notice strong { color: var(--text-primary); }
+.notice-badge { font-family: var(--font-mono); font-size: 9.5px; font-weight: 850; padding: 2px 6px; border-radius: 4px; background: var(--blue-bg); color: var(--blue-bright); border: 1px solid var(--blue-border); }
+
+/* Data Freshness Bar */
+.data-freshness-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  padding: 10px 16px; margin: 0 0 14px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(6, 182, 212, 0.05));
+  border: 1px solid rgba(16, 185, 129, 0.22); border-radius: var(--radius-md);
+  font-size: 11.5px;
+}
+.freshness-col { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.freshness-col.right { justify-content: flex-end; }
+.freshness-badge {
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 850; letter-spacing: .05em;
+  padding: 2px 7px; border-radius: 4px; background: var(--blue-bg); color: var(--blue-bright);
+  border: 1px solid var(--blue-border);
+}
+.freshness-label { color: var(--text-muted); font-weight: 600; }
+.freshness-date { color: var(--teal-bright); font-family: var(--font-mono); font-weight: 850; }
+.freshness-sub { color: var(--text-muted); font-size: 11px; }
+.freshness-tag.live {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 99px;
+  background: var(--teal-bg); color: var(--teal-bright); font-size: 10px; font-weight: 800;
+  border: 1px solid var(--teal-border); font-family: var(--font-mono);
+}
+
+/* Macro Breadth Cockpit Card */
+.cockpit-card {
+  background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+  padding: 16px; margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1.2fr 1.2fr; gap: 16px;
+}
+@media (max-width: 960px) { .cockpit-card { grid-template-columns: 1fr; } }
+
+.cockpit-box { display: flex; flex-direction: column; gap: 6px; }
+.cockpit-title { font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); font-family: var(--font-mono); }
+.cockpit-val { font-size: 18px; font-weight: 850; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+.cockpit-desc { font-size: 11.5px; color: var(--text-secondary); }
+
+.bar-track { width: 100%; height: 8px; background: var(--bg-subtle); border-radius: 99px; overflow: hidden; display: flex; margin-top: 4px; }
+.bar-fill-bull { background: var(--teal); height: 100%; }
+.bar-fill-bear { background: var(--red); height: 100%; }
+.bar-fill-sqz { background: var(--blue); height: 100%; }
+.bar-fill-exp { background: var(--teal); height: 100%; }
+.bar-fill-cool { background: var(--purple); height: 100%; }
+
+/* Panels & Toolbars */
+.panel { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 16px; }
+.toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 10.5px; font-weight: 750; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; font-family: var(--font-mono); }
+.field input, .field select {
+  background: var(--bg-canvas); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);
+  padding: 6px 10px; font-size: 12px; color: var(--text-primary); outline: none; min-width: 140px;
+}
+.field input:focus, .field select:focus { border-color: var(--border-focus); outline: 2px solid var(--border-focus); }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-sm);
+  font-size: 11.5px; font-weight: 750; border: 1px solid transparent; transition: all .15s ease;
+}
+.btn.primary { background: var(--blue); color: #fff; }
+.btn.primary:hover { opacity: 0.9; }
+.btn.secondary { background: var(--bg-subtle); color: var(--text-primary); border-color: var(--border-subtle); }
+.btn.secondary:hover { background: var(--bg-hover); border-color: var(--border-focus); }
+.btn-sm { padding: 4px 8px; font-size: 10.5px; }
+
+/* Filter Category Container */
+.filter-panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+.panel-title { font-size: 14px; font-weight: 850; margin: 0; color: var(--text-primary); }
+.panel-subtitle { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.filter-summary { font-family: var(--font-mono); font-size: 11px; color: var(--blue-bright); }
+
+.quick-combos-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.combos-label { font-size: 11px; font-weight: 850; color: var(--text-muted); font-family: var(--font-mono); }
+.combos-list { display: flex; gap: 6px; flex-wrap: wrap; }
+.combo-btn {
+  background: var(--bg-canvas); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);
+  color: var(--text-secondary); padding: 4px 10px; font-size: 11px; font-weight: 700; transition: all .15s ease;
+}
+.combo-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-focus); }
+.combo-btn.active { background: var(--blue-bg); color: var(--blue-bright); border-color: var(--blue-border); }
+
+.category-filters-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.category-block { background: var(--bg-canvas); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 10px 12px; }
+.category-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.category-title { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-mono); }
+.category-badge { font-size: 9.5px; font-family: var(--font-mono); color: var(--teal-bright); }
+.category-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.filter-chip {
+  background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 4px;
+  padding: 3px 8px; font-size: 10.5px; font-weight: 700; color: var(--text-secondary); transition: all .12s ease;
+}
+.filter-chip:hover { color: var(--text-primary); border-color: var(--border-focus); }
+.filter-chip.active { background: var(--blue-bg); color: var(--blue-bright); border-color: var(--blue-border); }
+.chip-glyph { margin-right: 3px; font-size: 9px; }
+
+/* Table Section */
+.table-wrap { overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-canvas); }
+table.data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; white-space: nowrap; }
+table.data-table th {
+  background: var(--bg-card); color: var(--text-muted); font-size: 10.5px; font-weight: 850;
+  text-transform: uppercase; letter-spacing: .05em; padding: 10px 12px; border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono); user-select: none;
+}
+table.data-table th.sortable { cursor: pointer; }
+table.data-table th.sortable:hover { color: var(--text-primary); }
+table.data-table td { padding: 8px 12px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); }
+table.data-table tr:hover { background: var(--bg-hover); cursor: pointer; }
+table.data-table tr.selected { background: var(--blue-bg); border-left: 3px solid var(--blue); }
+
+.tag-badge {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 850; padding: 2px 6px; border-radius: 4px;
+  display: inline-block; letter-spacing: .04em;
+}
+.tag-badge.alpha-buy { background: var(--teal-bg); color: var(--teal-bright); border: 1px solid var(--teal-border); }
+.tag-badge.prime-coil { background: var(--blue-bg); color: var(--blue-bright); border: 1px solid var(--blue-border); }
+.tag-badge.coil-a { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.35); }
+.tag-badge.expanding { background: var(--teal-bg); color: var(--teal-bright); border: 1px solid var(--teal-border); }
+.tag-badge.watchlist { background: var(--amber-bg); color: var(--amber-bright); border: 1px solid var(--amber-border); }
+.tag-badge.bear-trap { background: var(--red-bg); color: var(--red-bright); border: 1px solid var(--red-border); }
+.tag-badge.neutral { background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+
+.score-badge {
+  font-family: var(--font-mono); font-weight: 850; padding: 2px 7px; border-radius: 4px; font-size: 11px;
+}
+.score-s { background: var(--teal-bg); color: var(--teal-bright); border: 1px solid var(--teal-border); }
+.score-a { background: var(--blue-bg); color: var(--blue-bright); border: 1px solid var(--blue-border); }
+.score-b { background: var(--amber-bg); color: var(--amber-bright); border: 1px solid var(--amber-border); }
+.score-c { background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+
+/* Deep-Dive Studio */
+.studio-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 16px; margin-top: 16px; }
+@media (max-width: 1080px) { .studio-grid { grid-template-columns: 1fr; } }
+
+.studio-head {
+  display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 12px; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;
+}
+.studio-ticker { font-size: 22px; font-weight: 900; font-family: var(--font-mono); color: var(--text-primary); }
+.studio-name { font-size: 13px; color: var(--text-muted); margin-left: 8px; }
+.studio-price { font-size: 18px; font-weight: 850; font-family: var(--font-mono); color: var(--teal-bright); }
+
+.pillar-row { display: flex; flex-direction: column; gap: 3px; margin-bottom: 12px; padding: 8px 10px; background: var(--bg-canvas); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); }
+.pillar-head { display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 750; }
+.pillar-score { font-family: var(--font-mono); color: var(--blue-bright); }
+.pillar-reason { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+.playbook-card {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(16, 185, 129, 0.08));
+  border: 1px solid var(--blue-border); border-radius: var(--radius-md); padding: 14px; margin-top: 14px;
+}
+.playbook-title { font-size: 12px; font-weight: 850; color: var(--blue-bright); text-transform: uppercase; font-family: var(--font-mono); margin-bottom: 6px; }
+.playbook-text { font-size: 12px; color: var(--text-primary); line-height: 1.6; }
+
+/* SVG Chart Container */
+.chart-box { background: var(--bg-canvas); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px; position: relative; }
+.chart-title { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-mono); margin-bottom: 8px; display: flex; justify-content: space-between; }
+svg.cone-chart { width: 100%; height: 260px; overflow: visible; }
+
+/* Views */
+.view { min-width: 0; }
+.view[hidden] { display: none !important; }
+.view-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin: 6px 0 16px; flex-wrap: wrap; }
+.view-heading h2 { margin: 0; font-size: 18px; font-weight: 850; color: var(--text-primary); }
+.view-heading p { margin: 4px 0 0; color: var(--text-muted); font-size: 11.5px; }
+
+/* Forecast Grid */
+.forecast-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.forecast-card { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px; }
+.f-label { font-size: 10.5px; font-weight: 750; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-mono); }
+.f-val { font-size: 18px; font-weight: 850; font-family: var(--font-mono); color: var(--text-primary); margin-top: 4px; display: block; }
+
+/* Accessibility Focus */
+:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+</style>
+<script src="data/snapshot_data.js"></script>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- Header -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">QQQ</div>
+      <div>
+        <div class="eyebrow">PENGUIN VOLATILITY LAB · NASDAQ-100</div>
+        <h1>Nasdaq-100 Volatility Screener &amp; Quant Terminal</h1>
+        <div class="subhead">Pine-Compatible BB–KC Spread · 5-Pillar Score (0–100) · 2SD Forward Volatility Cones · Zero-Click Precomputed</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button id="themeToggleBtn" class="theme-toggle" type="button" aria-label="Toggle Theme">
+        <svg class="theme-icon-light" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="theme-icon-dark" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <span class="theme-text">Theme</span>
+      </button>
+      <div class="topmeta">
+        <div class="topmeta-badges">
+          <span class="readonly"><i class="dot"></i> NASDAQ-100 · 100 STOCKS</span>
+          <span class="sync-schedule-pill">[DAILY SYNC 16:30 EST]</span>
+        </div>
+        <div id="syncStamp" style="margin-top:6px; font-family:var(--font-mono); font-size:10px;">Market As-Of: <strong id="asOfHeader">Loading...</strong></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="tabs" aria-label="Main Navigation">
+    <button type="button" class="active" data-view="marketView" aria-controls="marketView" aria-pressed="true">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Screener &amp; Deep-Dive Studio
+    </button>
+    <button type="button" data-view="forecastView" aria-controls="forecastView" aria-pressed="false">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+      2SD Volatility Cone Studio
+    </button>
+    <button type="button" data-view="researchView" aria-controls="researchView" aria-pressed="false">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Market Volatility EDA
+    </button>
+    <button type="button" data-view="methodologyView" aria-controls="methodologyView" aria-pressed="false">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+      Quant Rules &amp; Playbook
+    </button>
+  </nav>
+
+  <!-- Notice -->
+  <div class="notice">
+    <span class="notice-badge">[ZERO-CLICK AUTOMATION]</span>
+    <div>
+      <strong>สแกนอัตโนมัติไม่ต้องกดปุ่ม:</strong> ข้อมูลคำนวณล่วงหน้าผ่าน Python Batch Engine และอัปเดตอัตโนมัติทุกวันทำการหลังปิดตลาดสหรัฐฯ (16:30 EST) ค่า diff &gt; 0 แสดงว่า BB กว้างกว่า KC (Expansion) และ diff &le; 0 คือ Squeeze (สะสมพลัง)
+    </div>
+  </div>
+
+  <main>
+    <!-- View 1: Screener & Studio -->
+    <section id="marketView" class="view">
+      
+      <!-- Data Freshness Bar -->
+      <div class="data-freshness-bar">
+        <div class="freshness-col">
+          <span class="freshness-badge">[DAILY 16:30 EST SYNC]</span>
+          <span class="freshness-label">สถานะข้อมูล Nasdaq-100 ล่าสุด:</span>
+          <strong id="freshnessDate" class="freshness-date">—</strong>
+        </div>
+        <div class="freshness-col right">
+          <span class="freshness-sub">รอบอัปเดตถัดไป: จันทร์–ศุกร์ 16:30 EST (21:30 UTC · ปิดตลาด NYSE/NASDAQ)</span>
+          <span class="freshness-tag live"><i class="dot-small"></i> Live Precomputed</span>
+        </div>
+      </div>
+
+      <!-- Macro Breadth Cockpit Card -->
+      <section class="cockpit-card">
+        <div class="cockpit-box">
+          <span class="cockpit-title">1. สภาวะตลาดภาพรวม (Macro Regime)</span>
+          <div class="cockpit-val" id="cockpitRegimeVal">—</div>
+          <span class="cockpit-desc" id="cockpitRegimeDesc">—</span>
+        </div>
+        <div class="cockpit-box">
+          <span class="cockpit-title">2. Trend Breadth (EMA12 &gt; EMA26)</span>
+          <div class="cockpit-val" id="cockpitTrendVal">—</div>
+          <div class="bar-track">
+            <div id="barBull" class="bar-fill-bull" style="width: 50%;"></div>
+            <div id="barBear" class="bar-fill-bear" style="width: 50%;"></div>
+          </div>
+          <span class="cockpit-desc" id="cockpitTrendDesc">—</span>
+        </div>
+        <div class="cockpit-box">
+          <span class="cockpit-title">3. Volatility Energy (Squeeze vs Expansion)</span>
+          <div class="cockpit-val" id="cockpitVolVal">—</div>
+          <div class="bar-track">
+            <div id="barSqz" class="bar-fill-sqz" style="width: 30%;"></div>
+            <div id="barExp" class="bar-fill-exp" style="width: 40%;"></div>
+            <div id="barCool" class="bar-fill-cool" style="width: 30%;"></div>
+          </div>
+          <span class="cockpit-desc" id="cockpitVolDesc">—</span>
+        </div>
+      </section>
+
+      <!-- Category Filter Panel -->
+      <section class="panel">
+        <div class="filter-panel-head">
+          <div>
+            <h2 class="panel-title">ตัวกรองสแกนเนอร์ Nasdaq-100 (Multi-Select Filters)</h2>
+            <div class="panel-subtitle">เลือกหลายตัวเลือกพร้อมกันเพื่อคัดกรองหุ้นตามสภาวะความผันผวนและโมเมนตัม</div>
+          </div>
+          <div class="filter-panel-actions">
+            <span id="filterSummary" class="filter-summary">กำลังโหลด 100 หุ้น...</span>
+            <button id="clearFiltersBtn" class="btn secondary btn-sm" type="button">ล้างตัวกรอง</button>
+          </div>
+        </div>
+
+        <!-- Quick Combos -->
+        <div class="quick-combos-row">
+          <span class="combos-label">สูตรผสมด่วน:</span>
+          <div class="combos-list">
+            <button type="button" class="combo-btn active" data-combo="all">ทุกลำดับ (100)</button>
+            <button type="button" class="combo-btn" data-combo="alpha">[ALPHA BUY] เกรด S/A ปลดปล่อยโมเมนตัม</button>
+            <button type="button" class="combo-btn" data-combo="prime">[PRIME COIL] เกรด S/A บีบตัวลึกพร้อมระเบิด</button>
+            <button type="button" class="combo-btn" data-combo="expanding">[EXPANDING] กำลังขยายตัวต่อเนื่อง</button>
+            <button type="button" class="combo-btn" data-combo="coil-a">[COIL A+] Squeeze ลึกรอบปี</button>
+            <button type="button" class="combo-btn" data-combo="bear-trap">[BEAR TRAP] หุ้นแนวโน้มลบที่บีบตัว</button>
+          </div>
+        </div>
+
+        <!-- 4 Distinct Filter Blocks -->
+        <div class="category-filters-container">
+          <div class="category-block">
+            <div class="category-header">
+              <span class="category-title">1. สถานะ Volatility (BB/KC)</span>
+              <span class="category-badge" id="badge-bbkc">ทั้งหมด</span>
+            </div>
+            <div class="category-chips" id="chips-bbkc">
+              <button type="button" class="filter-chip active" data-cat="bbkc" data-val="all">ทั้งหมด</button>
+              <button type="button" class="filter-chip" data-cat="bbkc" data-val="squeeze"><span class="chip-glyph">●</span> Squeeze (diff &le; 0)</button>
+              <button type="button" class="filter-chip" data-cat="bbkc" data-val="release"><span class="chip-glyph">▲</span> Fresh Release (ข้าม 0)</button>
+              <button type="button" class="filter-chip" data-cat="bbkc" data-val="expand"><span class="chip-glyph">▲</span> Expanding (ขยายต่อ)</button>
+              <button type="button" class="filter-chip" data-cat="bbkc" data-val="cool"><span class="chip-glyph">▼</span> Cooling (เริ่มชะลอ)</button>
+            </div>
+          </div>
+
+          <div class="category-block">
+            <div class="category-header">
+              <span class="category-title">2. Trend Momentum</span>
+              <span class="category-badge" id="badge-ema">ทั้งหมด</span>
+            </div>
+            <div class="category-chips" id="chips-ema">
+              <button type="button" class="filter-chip active" data-cat="ema" data-val="all">ทั้งหมด</button>
+              <button type="button" class="filter-chip" data-cat="ema" data-val="bull"><span class="chip-glyph">▲</span> ขาขึ้น (EMA12 &gt; 26)</button>
+              <button type="button" class="filter-chip" data-cat="ema" data-val="bear"><span class="chip-glyph">▼</span> ขาลง (EMA12 &lt; 26)</button>
+            </div>
+          </div>
+
+          <div class="category-block">
+            <div class="category-header">
+              <span class="category-title">3. เกรดคะแนนควอนท์ (Tier)</span>
+              <span class="category-badge" id="badge-tier">ทั้งหมด</span>
+            </div>
+            <div class="category-chips" id="chips-tier">
+              <button type="button" class="filter-chip active" data-cat="tier" data-val="all">ทั้งหมด</button>
+              <button type="button" class="filter-chip" data-cat="tier" data-val="S">[S] Prime (85–100)</button>
+              <button type="button" class="filter-chip" data-cat="tier" data-val="A">[A] High (75–84)</button>
+              <button type="button" class="filter-chip" data-cat="tier" data-val="B">[B] Watchlist (60–74)</button>
+              <button type="button" class="filter-chip" data-cat="tier" data-val="C">[C] Neutral (&lt;60)</button>
+            </div>
+          </div>
+
+          <div class="category-block">
+            <div class="category-header">
+              <span class="category-title">4. Sector (กลุ่มอุตสาหกรรม)</span>
+              <span class="category-badge" id="badge-sector">ทั้งหมด</span>
+            </div>
+            <div class="category-chips" id="chips-sector">
+              <button type="button" class="filter-chip active" data-cat="sector" data-val="all">ทั้งหมด</button>
+              <button type="button" class="filter-chip" data-cat="sector" data-val="Technology">Tech</button>
+              <button type="button" class="filter-chip" data-cat="sector" data-val="Semiconductors">Semis</button>
+              <button type="button" class="filter-chip" data-cat="sector" data-val="Healthcare">Health</button>
+              <button type="button" class="filter-chip" data-cat="sector" data-val="Consumer Discretionary">Consumer</button>
+              <button type="button" class="filter-chip" data-cat="sector" data-val="Communication Services">Comm</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search & Sort Controls -->
+        <div class="toolbar" style="margin-top: 14px;">
+          <div class="field" style="flex: 1; min-width: 220px;">
+            <label for="stockSearch">ค้นหาหุ้น Nasdaq-100</label>
+            <input id="stockSearch" type="search" placeholder="พิมพ์ชื่อย่อ เช่น NVDA, AAPL, MSFT, TSLA..." autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="sortBy">เรียงตาม</label>
+            <select id="sortBy">
+              <option value="total_score" selected>Quant Score (0–100)</option>
+              <option value="diff">BB-KC Diff %</option>
+              <option value="price">ราคาปิด ($)</option>
+              <option value="ret_20d">20D Return %</option>
+              <option value="dist_to_high40_pct">ระยะห่าง High 40D</option>
+              <option value="atr_pct">ATR %</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="sortOrder">ลำดับ</label>
+            <select id="sortOrder">
+              <option value="desc" selected>มากไปน้อย (Desc)</option>
+              <option value="asc">น้อยไปมาก (Asc)</option>
+            </select>
+          </div>
+          <button id="exportCsvBtn" class="btn secondary" type="button" style="margin-top: 16px;">Export CSV</button>
+        </div>
+      </section>
+
+      <!-- Screener Table -->
+      <section class="panel" style="padding: 0; overflow: hidden;">
+        <div class="table-wrap">
+          <table class="data-table" id="screenerTable">
+            <thead>
+              <tr>
+                <th class="sortable" data-col="rank">Rank</th>
+                <th class="sortable" data-col="ticker">Ticker</th>
+                <th>Company Name</th>
+                <th>Sector</th>
+                <th class="sortable" data-col="price" style="text-align:right;">Price ($)</th>
+                <th class="sortable" data-col="diff" style="text-align:right;">Diff %</th>
+                <th class="sortable" data-col="percentile_252" style="text-align:right;">Pct 252D</th>
+                <th>Phase</th>
+                <th>Trend</th>
+                <th class="sortable" data-col="atr_pct" style="text-align:right;">ATR %</th>
+                <th class="sortable" data-col="ret_20d" style="text-align:right;">20D %</th>
+                <th class="sortable" data-col="dist_to_high40_pct" style="text-align:right;">High 40D</th>
+                <th class="sortable" data-col="total_score" style="text-align:center;">Quant Score</th>
+                <th style="text-align:center;">Badge</th>
+              </tr>
+            </thead>
+            <tbody id="screenerTableBody">
+              <!-- Dynamically Populated -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Deep-Dive Studio -->
+      <section class="panel" id="deepDiveStudio">
+        <div class="studio-head">
+          <div>
+            <span class="studio-ticker" id="stTicker">—</span>
+            <span class="studio-name" id="stName">—</span>
+            <span id="stSector" class="tag-badge neutral" style="margin-left: 8px;">—</span>
+          </div>
+          <div style="display:flex; align-items:center; gap: 12px;">
+            <span class="studio-price" id="stPrice">—</span>
+            <span id="stBadge" class="tag-badge alpha-buy">—</span>
+            <span id="stScoreBadge" class="score-badge score-s">—</span>
+          </div>
+        </div>
+
+        <div class="studio-grid">
+          <!-- 5-Pillar Score Breakdown -->
+          <div>
+            <div style="font-size: 11px; font-weight: 850; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-mono); margin-bottom: 8px;">
+              5-Pillar Quantitative Composite Breakdown (0–100)
+            </div>
+
+            <div class="pillar-row">
+              <div class="pillar-head">
+                <span>1. Volatility Regime &amp; Lifespan (30 pts)</span>
+                <span class="pillar-score" id="stScoreRegime">— / 30</span>
+              </div>
+              <div class="bar-track"><div id="stBarRegime" class="bar-fill-sqz" style="width: 0%;"></div></div>
+              <div class="pillar-reason" id="stReasonRegime">—</div>
+            </div>
+
+            <div class="pillar-row">
+              <div class="pillar-head">
+                <span>2. Trend Confluence &amp; Breakout 40D (25 pts)</span>
+                <span class="pillar-score" id="stScoreTrend">— / 25</span>
+              </div>
+              <div class="bar-track"><div id="stBarTrend" class="bar-fill-exp" style="width: 0%;"></div></div>
+              <div class="pillar-reason" id="stReasonTrend">—</div>
+            </div>
+
+            <div class="pillar-row">
+              <div class="pillar-head">
+                <span>3. Statistical Volatility Lift &amp; EDA (20 pts)</span>
+                <span class="pillar-score" id="stScoreEda">— / 20</span>
+              </div>
+              <div class="bar-track"><div id="stBarEda" class="bar-fill-cool" style="width: 0%;"></div></div>
+              <div class="pillar-reason" id="stReasonEda">—</div>
+            </div>
+
+            <div class="pillar-row">
+              <div class="pillar-head">
+                <span>4. Structural S/R &amp; SMA20 Support (15 pts)</span>
+                <span class="pillar-score" id="stScoreStructural">— / 15</span>
+              </div>
+              <div class="bar-track"><div id="stBarStructural" class="bar-fill-exp" style="width: 0%;"></div></div>
+              <div class="pillar-reason">ราคาอยู่เหนือ SMA20 พร้อมแนวรับแข็งแกร่ง</div>
+            </div>
+
+            <div class="pillar-row">
+              <div class="pillar-head">
+                <span>5. Market Quality &amp; Liquidity (10 pts)</span>
+                <span class="pillar-score" id="stScoreQuality">— / 10</span>
+              </div>
+              <div class="bar-track"><div id="stBarQuality" class="bar-fill-bull" style="width: 0%;"></div></div>
+              <div class="pillar-reason">สภาพคล่องสูงในกลุ่มดัชนี Nasdaq-100</div>
+            </div>
+
+            <div class="playbook-card">
+              <div class="playbook-title">[STRATEGY PLAYBOOK · แผนการเทรด]</div>
+              <div class="playbook-text" id="stPlaybook">—</div>
+            </div>
+          </div>
+
+          <!-- Forward 2SD Volatility Cone Chart -->
+          <div>
+            <div class="chart-box">
+              <div class="chart-title">
+                <span>Forward 2SD Volatility Cone (60-Day Probability Band)</span>
+                <span id="stVolAnn" style="color: var(--teal-bright); font-family: var(--font-mono);">Ann Vol: —%</span>
+              </div>
+              <svg id="coneSvgChart" class="cone-chart" viewBox="0 0 600 260" preserveAspectRatio="none">
+                <!-- SVG elements dynamically generated -->
+              </svg>
+              <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:10.5px; font-family:var(--font-mono); color:var(--text-muted);">
+                <span>Day 0 (Current)</span>
+                <span>Day 15</span>
+                <span>Day 30</span>
+                <span>Day 45</span>
+                <span>Day 60</span>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+              <div class="forecast-card">
+                <span class="f-label">Expected Range 30-Day (&plusmn;2&sigma;)</span>
+                <span class="f-val" id="stRange30" style="font-size: 14px;">—</span>
+              </div>
+              <div class="forecast-card">
+                <span class="f-label">Expected Range 60-Day (&plusmn;2&sigma;)</span>
+                <span class="f-val" id="stRange60" style="font-size: 14px;">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </section>
+
+    <!-- View 2: Forecast View -->
+    <section id="forecastView" class="view" hidden>
+      <div class="view-heading">
+        <div>
+          <h2>พยากรณ์กรอบราคาในอนาคต (Forward Volatility Cone &middot; 2SD Probability Band)</h2>
+          <p>คำนวณราคาเฉลี่ยคาดการณ์ (Expected Path) พร้อมกรอบบน/ล่าง &plusmn;2SD ที่ขยายตัวตามความผันผวนทางสถิติ (95.4% Confidence Interval)</p>
+        </div>
+        <div class="toolbar">
+          <div class="field">
+            <label for="fcSelectStock">เลือกหุ้น Nasdaq-100</label>
+            <select id="fcSelectStock"></select>
+          </div>
+          <div class="field">
+            <label for="fcHorizon">ระยะเวลาพยากรณ์</label>
+            <select id="fcHorizon">
+              <option value="15">15 วัน (3 สัปดาห์)</option>
+              <option value="30" selected>30 วัน (1 เดือน)</option>
+              <option value="60">60 วัน (2 เดือน)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="forecast-grid">
+        <div class="forecast-card">
+          <span class="f-label">ราคาปิดปัจจุบัน (S₀)</span>
+          <span class="f-val" id="fcCurrentPriceVal">—</span>
+        </div>
+        <div class="forecast-card">
+          <span class="f-label">Annualized Volatility (&sigma;)</span>
+          <span class="f-val" id="fcVolVal">—</span>
+        </div>
+        <div class="forecast-card">
+          <span class="f-label">กรอบบน +2SD (Upper Target)</span>
+          <span class="f-val" id="fcUpperVal" style="color: var(--teal-bright);">—</span>
+        </div>
+        <div class="forecast-card">
+          <span class="f-label">กรอบล่าง -2SD (Lower Stop/Support)</span>
+          <span class="f-val" id="fcLowerVal" style="color: var(--red-bright);">—</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="chart-box" style="padding: 16px;">
+          <div class="chart-title">
+            <span id="fcChartHeading">Probability Cone Simulation</span>
+            <span style="color: var(--blue-bright);">Log-Normal Diffusion Model</span>
+          </div>
+          <svg id="fcDetailedChart" class="cone-chart" viewBox="0 0 800 320" style="height: 320px;" preserveAspectRatio="none">
+            <!-- Rendered by JS -->
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- View 3: Market Volatility EDA -->
+    <section id="researchView" class="view" hidden>
+      <div class="view-heading">
+        <div>
+          <h2>Market Volatility EDA &amp; Regime Statistics</h2>
+          <p>การกระจายตัวของพลังงานความผันผวนและสถิติเชิงปริมาณของหุ้นในกลุ่ม Nasdaq-100</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3 style="margin-top:0; font-size:14px; font-weight:850; color:var(--text-primary);">การกระจายตัวของสถานะ Volatility ทั่วทั้ง 100 หุ้น</h3>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 14px;">
+          <div class="forecast-card">
+            <span class="f-label">Squeeze Regime (diff &le; 0)</span>
+            <span class="f-val" id="edaSqueezeVal" style="color: var(--blue-bright);">—</span>
+            <span style="font-size: 11px; color: var(--text-muted);">หุ้นที่อยู่ในสภาวะสะสมพลังงาน</span>
+          </div>
+          <div class="forecast-card">
+            <span class="f-label">Expansion Regime (diff &gt; 0)</span>
+            <span class="f-val" id="edaExpVal" style="color: var(--teal-bright);">—</span>
+            <span style="font-size: 11px; color: var(--text-muted);">หุ้นที่กำลังปลดปล่อยความผันผวน</span>
+          </div>
+          <div class="forecast-card">
+            <span class="f-label">Trend Breadth (EMA Bull)</span>
+            <span class="f-val" id="edaBullVal" style="color: var(--teal-bright);">—</span>
+            <span style="font-size: 11px; color: var(--text-muted);">EMA12 &gt; EMA26 Confluence</span>
+          </div>
+          <div class="forecast-card">
+            <span class="f-label">Grade S/A Candidates</span>
+            <span class="f-val" id="edaTopGradeVal" style="color: var(--purple-bright);">—</span>
+            <span style="font-size: 11px; color: var(--text-muted);">เกรดคะแนนคุณภาพสูง &ge; 75 คะแนน</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View 4: Methodology & Playbook -->
+    <section id="methodologyView" class="view" hidden>
+      <div class="view-heading">
+        <div>
+          <h2>ระเบียบวิธีวิจัยและสูตรคำนวณทางควอนท์ (Methodology &amp; Quant Rules)</h2>
+          <p>เอกสารอ้างอิงสูตรคณิตศาสตร์และหลักการให้คะแนน 5 เสาหลัก</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3 style="font-size:15px; font-weight:850; color:var(--text-primary); margin-top:0;">1. สูตรคำนวณ BB&ndash;KC Volatility Spread (Pine-Script Compatible)</h3>
+        <p style="color:var(--text-secondary); line-height:1.7;">
+          สูตรคำนวณ Bollinger Bands และ Keltner Channels อิงความยาว 20 วัน (Period = 20) และตัวคูณส่วนเบี่ยงเบนมาตรฐาน/ATR เท่ากับ 2.0:<br>
+          <code style="font-family:var(--font-mono); color:var(--teal-bright); background:var(--bg-canvas); padding:2px 6px; border-radius:4px;">
+            diff = ((UpperBB - UpperKC) / UpperKC) * 100
+          </code><br>
+          โดยที่ ATR คำนวณด้วย Running Moving Average (RMA) ตามมาตรฐาน TradingView Pine Script:
+          <br>&bull; <strong>Squeeze (Compression):</strong> <code style="font-family:var(--font-mono);">diff &le; 0</code> (Bollinger Bands หดตัวเข้าไปอยู่ภายใน Keltner Channels)
+          <br>&bull; <strong>Fresh Release:</strong> <code style="font-family:var(--font-mono);">diff[t-1] &le; 0 &and; diff[t] &gt; 0</code> (แท่งแรกที่ระเบิดออกจาก Squeeze)
+          <br>&bull; <strong>Active Expansion:</strong> <code style="font-family:var(--font-mono);">diff &gt; 0 &and; diff &gt; diff[t-1]</code> (แถบความผันผวนกำลังขยายตัวอย่างต่อเนื่อง)
+          <br>&bull; <strong>Cooling:</strong> <code style="font-family:var(--font-mono);">diff &gt; 0 &and; RSI(diff) &lt; SMA7(RSI(diff))</code> (โมเมนตัมความผันผวนเริ่มชะลอตัว)
+        </p>
+
+        <h3 style="font-size:15px; font-weight:850; color:var(--text-primary); margin-top:20px;">2. ระบบคะแนน 5 เสาหลัก (5-Pillar Quant Composite Score)</h3>
+        <ul style="color:var(--text-secondary); line-height:1.8;">
+          <li><strong>Pillar 1: Volatility Regime &amp; Lifespan (30 คะแนน)</strong> &mdash; ให้คะแนนสูงเป็นพิเศษเมื่อเป็น Fresh Release หรือบีบตัวลึกรอบปี (Percentile &le; 20%) พร้อมอายุการบีบตัวที่สะสมพลังงานมาเพียงพอ</li>
+          <li><strong>Pillar 2: Trend Confluence &amp; Breakout 40D (25 คะแนน)</strong> &mdash; ตรวจสอบโมเมนตัม EMA12 &gt; EMA26 และระยะห่างจาก High 40 วัน ยิ่งจ่อเบรกไฮ (< 2%) ยิ่งได้คะแนนเต็ม</li>
+          <li><strong>Pillar 3: Statistical Volatility Lift &amp; EDA (20 คะแนน)</strong> &mdash; ตรวจสอบพฤติกรรมความผันผวนในอดีตหลังเกิด Release ว่ามี Win-rate และ Lift ที่ได้เปรียบทางสถิติ</li>
+          <li><strong>Pillar 4: Structural Support &amp; SMA20 (15 คะแนน)</strong> &mdash; ยืนเหนือค่าเฉลี่ย SMA20 ยืนยันโครงสร้างราคาไม่เสียทรง</li>
+          <li><strong>Pillar 5: Market Quality &amp; Liquidity (10 คะแนน)</strong> &mdash; มูลค่าซื้อขายและสภาพคล่องสถาบันในกลุ่ม Nasdaq-100</li>
+        </ul>
+
+        <h3 style="font-size:15px; font-weight:850; color:var(--text-primary); margin-top:20px;">3. Forward 2SD Volatility Cone</h3>
+        <p style="color:var(--text-secondary); line-height:1.7;">
+          จำลองกรอบการแกว่งตัวของราคาในอนาคตด้วยแบบจำลอง Log-Normal Diffusion (Brownian Motion) ตามสูตร:
+          <br>
+          <code style="font-family:var(--font-mono); color:var(--blue-bright); background:var(--bg-canvas); padding:2px 6px; border-radius:4px;">
+            Upper / Lower (t) = S₀ &times; exp(&plusmn; 2 &times; &sigma;_ann &times; sqrt(t / 252))
+          </code><br>
+          โดยใช้ 252 วันทำการต่อปีสำหรับตลาดหุ้นสหรัฐฯ (US Equities) ซึ่งครอบคลุม 95.4% ของความน่าจะเป็นทางสถิติ
+        </p>
+      </div>
+    </section>
+  </main>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
