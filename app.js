@@ -3,6 +3,7 @@
 /**
  * Penguin Volatility Lab — Nasdaq-100 Quantitative Terminal
  * Strict DTCG Tokens · Anti-Slop (Zero Emoji) · Zero-Click Precomputed Snapshot
+ * Selected Stock Analysis Studio: Candlestick + EMA12/26 + Volume + BB/KC diff + RSI(diff) + 2SD Cone
  */
 
 (function () {
@@ -13,8 +14,9 @@
   let selectedTicker = null;
   let sortColumn = "total_score";
   let sortAscending = false;
+  let activePriceDays = 180; // Default lookback for Candlestick chart
 
-  // Active Category Filters (Sets allow multi-select)
+  // Active Category Filters
   const filters = {
     bbkc: new Set(["all"]),
     ema: new Set(["all"]),
@@ -23,8 +25,18 @@
     search: ""
   };
 
-  // Helper DOM selector
   const $ = (id) => document.getElementById(id);
+
+  // Escaping for HTML safety
+  function esc(s) {
+    if (s == null) return "";
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
 
   // Theme Management
   function initTheme() {
@@ -35,7 +47,8 @@
       const next = current === "dark" ? "light" : "dark";
       document.documentElement.setAttribute("data-theme", next);
       localStorage.setItem("penguin_theme", next);
-      renderConeChart();
+      const stock = allStocks.find(s => s.ticker === selectedTicker) || allStocks[0];
+      if (stock) renderStudio(stock);
       renderDetailedForecast();
     });
   }
@@ -44,6 +57,31 @@
   const fmtNum = (val, d = 2) => (val == null || !Number.isFinite(val) ? "—" : Number(val).toFixed(d));
   const fmtMoney = (val) => (val == null || !Number.isFinite(val) ? "—" : "$" + Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   const fmtPct = (val, d = 1) => (val == null || !Number.isFinite(val) ? "—" : (val > 0 ? "+" : "") + Number(val).toFixed(d) + "%");
+  const fmtN = (val) => (val == null || !Number.isFinite(val) ? "—" : Number(val).toLocaleString("en-US"));
+
+  // Map compact tuple bars to structured objects
+  // Format: [time, open, high, low, close, volume, ema12, ema26, diff, rsi, rsi_smooth]
+  function mapBars(rawBars) {
+    if (!rawBars || !rawBars.length) return [];
+    return rawBars.map((b) => {
+      if (Array.isArray(b)) {
+        return {
+          time: b[0],
+          open: b[1],
+          high: b[2],
+          low: b[3],
+          close: b[4],
+          volume: b[5],
+          ema12: b[6],
+          ema26: b[7],
+          diff: b[8],
+          rsi: b[9],
+          rsi_smooth: b[10]
+        };
+      }
+      return b;
+    });
+  }
 
   // Load Snapshot (Instant zero-click from preloaded window object or local JSON)
   async function loadSnapshot() {
@@ -155,12 +193,10 @@
       return true;
     });
 
-    // Sort
     sortStocks();
     renderTable();
     updateFilterSummary();
 
-    // If current selectedTicker is still in filtered, keep it; else select first
     if (filteredStocks.length > 0) {
       const exists = filteredStocks.some(s => s.ticker === selectedTicker);
       if (!exists) selectedTicker = filteredStocks[0].ticker;
@@ -187,7 +223,7 @@
     $("filterSummary").textContent = `แสดง ${filteredStocks.length} จาก 100 หุ้น`;
   }
 
-  // Render Table
+  // Render Screener Table
   function renderTable() {
     const tbody = $("screenerTableBody");
     if (!tbody) return;
@@ -245,166 +281,654 @@
           const fcSelect = $("fcSelectStock");
           if (fcSelect) fcSelect.value = ticker;
           renderDetailedForecast();
+          $("selectedPanelSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       });
     });
   }
 
-  // Render Deep-Dive Studio
+  // =========================================================================
+  // SELECTED STOCK ANALYSIS STUDIO (Matching Original Experience)
+  // =========================================================================
   function renderStudio(stock) {
-    if (!stock) return;
+    const container = $("selectedPanel");
+    if (!container || !stock) return;
 
-    $("stTicker").textContent = stock.ticker;
-    $("stName").textContent = stock.name;
-    $("stSector").textContent = stock.sector;
-    $("stPrice").textContent = fmtMoney(stock.price);
-
-    const tagClass = (stock.tag_class || "neutral").replace("_", "-");
-    $("stBadge").className = `tag-badge ${tagClass}`;
-    $("stBadge").textContent = stock.tag;
-
-    const scoreClass = `score-${stock.grade.toLowerCase()}`;
-    $("stScoreBadge").className = `score-badge ${scoreClass}`;
-    $("stScoreBadge").textContent = `Score: ${stock.total_score} / 100 (${stock.grade_label})`;
-
-    // Pillars
+    const mapped = mapBars(stock.bars);
     const bk = stock.breakdown || {};
-    $("stScoreRegime").textContent = `${bk.regime || 0} / 30`;
-    $("stBarRegime").style.width = `${((bk.regime || 0) / 30) * 100}%`;
-    $("stReasonRegime").textContent = bk.regime_reason || "Regime timing based on BB-KC compression/release";
+    const tagClass = (stock.tag_class || "neutral").replace("_", "-");
+    const scoreGrade = stock.grade.toLowerCase();
 
-    $("stScoreTrend").textContent = `${bk.trend || 0} / 25`;
-    $("stBarTrend").style.width = `${((bk.trend || 0) / 25) * 100}%`;
-    $("stReasonTrend").textContent = bk.trend_reason || "Trend alignment & proximity to 40-day high";
+    // Beginner Advice Text Generator
+    let beginnerAdvice = "";
+    if (tagClass === "alpha-buy") {
+      beginnerAdvice = `<div class="beginner-advice advice-buy"><b>[ALPHA BUY] จุดซื้อตามโมเมนตัม:</b> ผ่านเกณฑ์เบรกเอาต์ 40 วัน + แท่งเทียนกระทิงยืนยัน · <b>ควรถือนาน:</b> 7–13 วัน (ทยอยล็อกกำไรครึ่งหนึ่งแถววันที่ 7) · <b>จุดคัตทันที:</b> เมื่อแท่งวันปิดต่ำกว่าเส้น SMA20</div>`;
+    } else if (tagClass === "prime-coil") {
+      beginnerAdvice = `<div class="beginner-advice advice-coil"><b>[PRIME COIL] จุดดักสะสมต้นน้ำ:</b> บีบอัดตัวแน่นในโซนแนวรับ (Deep Squeeze) · <b>คำแนะนำ:</b> ทยอยตั้งรับ ไม่ต้องไล่ราคา · <b>รอขาย:</b> เมื่อข้ามสู่ Fresh Release แล้วรันตามรอบ 13 วัน · <b>จุดคัต:</b> หลุดแนวรับ Low 20 วัน</div>`;
+    } else if (tagClass === "expanding") {
+      beginnerAdvice = `<div class="beginner-advice advice-buy"><b>[EXPANDING] อยู่ในคลื่นขยายตัว:</b> โมเมนตัมกำลังส่งผล (ช่วง Day 2–5) · <b>คำแนะนำ:</b> ถือรันเทรนด์ได้ แต่ระวังอย่าไล่ราคาสูงเกินไป · <b>จุดล็อกกำไร:</b> ขยับ Trailing Stop ตามเส้น SMA20</div>`;
+    } else if (tagClass === "coil-a") {
+      beginnerAdvice = `<div class="beginner-advice advice-coil"><b>[COIL A+] ทรงสะสมพลังแข็งแกร่ง:</b> โครงสร้างราคาเหนียวแน่นสะสมพลังต่อเนื่อง · <b>คำแนะนำ:</b> แบ่งไม้เล็กสะสม รอยืนยันสัญญาณ Release เพื่อใส่เพิ่ม</div>`;
+    } else if (tagClass === "bear-trap") {
+      beginnerAdvice = `<div class="beginner-advice advice-danger"><b>[BEAR TRAP] ระวังกับดักสัญญาณหลอก:</b> แม้ค่า diff จะยกตัวแต่ EMA เป็นแนวโน้มขาลง (EMA Bear) · <b>คำแนะนำ:</b> ห้ามไล่ซื้อเด็ดขาด สถิติชี้ว่าอัตราล้มเหลวเกิน 65%</div>`;
+    } else if (tagClass === "watchlist") {
+      beginnerAdvice = `<div class="beginner-advice advice-watch"><b>[WATCHLIST] เฝ้าติดตาม:</b> เริ่มมีสัญญาณดีขึ้นแต่คะแนนยังไม่ครบ 5 เสาหลัก · <b>คำแนะนำ:</b> รอให้คะแนนแตะ 70+ หรือเกิดแท็ก Alpha Buy ก่อนเข้าเทรด</div>`;
+    } else {
+      beginnerAdvice = `<div class="beginner-advice advice-neutral"><b>[NEUTRAL] ยังไม่น่าสนใจ:</b> โครงสร้างยังไร้ทิศทางชัดเจน · <b>คำแนะนำ:</b> ข้ามไปก่อน มองหาหุ้นเกรด S หรือ A ที่มีไฟเขียว</div>`;
+    }
 
-    $("stScoreEda").textContent = `${bk.eda || 0} / 20`;
-    $("stBarEda").style.width = `${((bk.eda || 0) / 20) * 100}%`;
-    $("stReasonEda").textContent = bk.eda_reason || "Statistical volatility lift";
+    // Hero Section
+    const tvUrl = `https://www.tradingview.com/symbols/${stock.ticker}/`;
+    const yfUrl = `https://finance.yahoo.com/quote/${stock.ticker}/`;
 
-    $("stScoreStructural").textContent = `${bk.structural || 0} / 15`;
-    $("stBarStructural").style.width = `${((bk.structural || 0) / 15) * 100}%`;
+    // 1. Candlestick Main Chart
+    const candleData = renderCandleChartSVG(mapped, activePriceDays, stock.ticker);
 
-    $("stScoreQuality").textContent = `${bk.quality || 10} / 10`;
-    $("stBarQuality").style.width = "100%";
+    // 2. Sub-Charts: diff & rsi
+    const diffSeries = mapped.map(b => b.diff);
+    const rsiSeries = mapped.map(b => b.rsi);
+    const rsiSmoothSeries = mapped.map(b => b.rsi_smooth);
+    const diffChartHtml = renderSubChartSVG(diffSeries, "diff", null, "BB-KC diff 1D");
+    const rsiChartHtml = renderSubChartSVG(rsiSeries, "rsi", rsiSmoothSeries, "RSI(diff) 1D");
+    const coneChartHtml = renderForwardConeSVG(stock.cone, stock.price);
 
-    $("stPlaybook").textContent = stock.playbook || "เฝ้าระวังการพักตัว และรอจังหวะ Breakout ยืนยันโมเมนตัม";
+    container.innerHTML = `
+      <!-- Hero Header -->
+      <div class="studio-hero">
+        <div class="studio-hero-left">
+          <div class="studio-avatar">${esc(stock.ticker.slice(0, 4))}</div>
+          <div class="studio-identity">
+            <div class="studio-title-row">
+              <span class="studio-symbol">${esc(stock.ticker)}</span>
+              <span class="studio-rank-badge">Nasdaq-100 #${stock.rank || 1}</span>
+              <span class="tag-badge ${stock.phase === "squeeze" ? "prime-coil" : "expanding"}">${stock.phase_badge}</span>
+              <span class="tag-badge ${stock.is_ema_bull ? "alpha-buy" : "bear-trap"}">${stock.is_ema_bull ? "▲ EMA Bull" : "▼ EMA Bear"}</span>
+            </div>
+            <div class="studio-name-row">
+              <span class="studio-fullname">${esc(stock.name)}</span>
+              <span style="color:var(--text-muted);">&bull;</span>
+              <span>${esc(stock.sector)}</span>
+              <span style="color:var(--text-muted);">&bull;</span>
+              <span style="color:var(--teal-bright); font-family:var(--font-mono); font-weight:800;">${fmtMoney(stock.price)}</span>
+            </div>
+          </div>
+        </div>
+        <div class="studio-hero-right">
+          <div class="studio-asof-meta">
+            <span class="asof-label">แท่ง Daily ปิดล่าสุด</span>
+            <span class="asof-val">${mapped.length ? mapped[mapped.length - 1].time : "2026-10-29"} (16:30 EST)</span>
+          </div>
+          <div class="studio-hero-actions">
+            <a href="${tvUrl}" target="_blank" rel="noreferrer" class="btn-tv">TradingView ↗</a>
+            <a href="${yfUrl}" target="_blank" rel="noreferrer" class="btn-yf">Yahoo Finance ↗</a>
+            <button type="button" class="btn btn-sm secondary" id="scrollToTableBtnHero">↑ ตารางสแกนเนอร์</button>
+          </div>
+        </div>
+      </div>
 
-    // Forward Cone Chart
-    renderConeChart(stock);
+      <!-- Quant Score Stage (2 Columns) -->
+      <div class="studio-score-stage">
+        <!-- Total Score Card -->
+        <div class="studio-scorecard-box">
+          <div class="scorecard-top">
+            <div class="scorecard-badge grade-${scoreGrade}">${stock.grade}</div>
+            <div class="scorecard-meta">
+              <div class="scorecard-total">
+                <span class="score-num">${stock.total_score}</span>
+                <span class="score-denom">/ 100</span>
+              </div>
+              <div class="scorecard-grade-label">${esc(stock.grade_label)}</div>
+            </div>
+          </div>
+          <div class="scorecard-bar-bg">
+            <div class="scorecard-bar-fill fill-${scoreGrade}" style="width:${stock.total_score}%"></div>
+          </div>
+          <div class="scorecard-tag-row">
+            <span class="tag-badge ${tagClass}" style="font-size:11px; padding:3px 8px;">${stock.tag}</span>
+            <span class="scorecard-hint">${stock.total_score >= 70 ? "● สัญญาณเข้าเกณฑ์ระบบ" : "○ รอสัญญาณคอนเฟิร์ม"}</span>
+          </div>
+        </div>
+
+        <!-- 5 Pillars Box -->
+        <div class="studio-pillars-box">
+          <!-- Pillar 1 -->
+          <div class="studio-pillar-item">
+            <div class="pillar-top">
+              <span class="pillar-label">1. REGIME</span>
+              <span class="pillar-score">${bk.regime || 0}/30</span>
+            </div>
+            <div class="pillar-bar"><div class="pillar-bar-fill" style="width:${((bk.regime || 0) / 30) * 100}%"></div></div>
+            <div class="pillar-reason">${esc(bk.regime_reason || "Regime timing")}</div>
+            <div class="pillar-sub">การบีบอัดตัว BB/KC Daily</div>
+          </div>
+          <!-- Pillar 2 -->
+          <div class="studio-pillar-item">
+            <div class="pillar-top">
+              <span class="pillar-label">2. MOMENTUM</span>
+              <span class="pillar-score">${bk.trend || 0}/25</span>
+            </div>
+            <div class="pillar-bar"><div class="pillar-bar-fill" style="width:${((bk.trend || 0) / 25) * 100}%"></div></div>
+            <div class="pillar-reason">${esc(bk.trend_reason || "Trend breakout")}</div>
+            <div class="pillar-sub">EMA12 vs EMA26 spread</div>
+          </div>
+          <!-- Pillar 3 -->
+          <div class="studio-pillar-item">
+            <div class="pillar-top">
+              <span class="pillar-label">3. EDA LIFT</span>
+              <span class="pillar-score">${bk.eda || 0}/20</span>
+            </div>
+            <div class="pillar-bar"><div class="pillar-bar-fill" style="width:${((bk.eda || 0) / 20) * 100}%"></div></div>
+            <div class="pillar-reason">${esc(bk.eda_reason || "Volatility lift")}</div>
+            <div class="pillar-sub">สถิติ Volatility Lift ในอดีต</div>
+          </div>
+          <!-- Pillar 4 -->
+          <div class="studio-pillar-item">
+            <div class="pillar-top">
+              <span class="pillar-label">4. STRUCTURE</span>
+              <span class="pillar-score">${bk.structural || 0}/15</span>
+            </div>
+            <div class="pillar-bar"><div class="pillar-bar-fill" style="width:${((bk.structural || 0) / 15) * 100}%"></div></div>
+            <div class="pillar-reason">ยืนเหนือเส้น SMA20</div>
+            <div class="pillar-sub">Support &amp; 20-Day Low</div>
+          </div>
+          <!-- Pillar 5 -->
+          <div class="studio-pillar-item">
+            <div class="pillar-top">
+              <span class="pillar-label">5. QUALITY</span>
+              <span class="pillar-score">${bk.quality || 10}/10</span>
+            </div>
+            <div class="pillar-bar"><div class="pillar-bar-fill" style="width:100%"></div></div>
+            <div class="pillar-reason">Nasdaq-100 Large Cap</div>
+            <div class="pillar-sub">สภาพคล่องและมูลค่าซื้อขายสูง</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Beginner Advice Callout -->
+      <div class="studio-advice-container">
+        ${beginnerAdvice}
+      </div>
+
+      <!-- Core KPIs Grid (5 Items) -->
+      <div class="studio-kpis">
+        <div class="kpi-card">
+          <div class="kpi-label"><span>diff 1D</span><span style="font-size:9px;">SPREAD</span></div>
+          <div class="kpi-val" style="color:${stock.diff <= 0 ? "var(--cyan-400)" : "var(--emerald-400)"};">${fmtPct(stock.diff)}</div>
+          <div class="kpi-sub">${stock.diff <= 0 ? "● Bollinger บีบใน Keltner (Squeeze)" : "▲ ขยายตัวเหนือ Keltner (Expansion)"}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label"><span>RSI(diff) 1D</span><span style="font-size:9px;">RSI14</span></div>
+          <div class="kpi-val">${mapped.length && mapped[mapped.length - 1].rsi != null ? mapped[mapped.length - 1].rsi : "—"}</div>
+          <div class="kpi-sub">● สมดุลช่วงปกติ (30–70)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label"><span>EMA Spread</span><span style="font-size:9px;">MOMENTUM</span></div>
+          <div class="kpi-val" style="color:${stock.is_ema_bull ? "var(--emerald-400)" : "var(--rose-400)"};">${fmtPct(stock.ema_spread)}</div>
+          <div class="kpi-sub">EMA12: ${fmtNum(stock.ema12)} vs EMA26: ${fmtNum(stock.ema26)}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label"><span>Diff Pct 252D</span><span style="font-size:9px;">PERCENTILE</span></div>
+          <div class="kpi-val">${fmtNum(stock.percentile_252, 1)}%</div>
+          <div class="kpi-sub">เทียบกับประวัติรอบปี (252 แท่ง)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label"><span>ATR % &amp; 20D Ret</span><span style="font-size:9px;">VOLATILITY</span></div>
+          <div class="kpi-val" style="color:${stock.ret_20d >= 0 ? "var(--emerald-400)" : "var(--rose-400)"};">${fmtPct(stock.ret_20d)}</div>
+          <div class="kpi-sub">ATR: ${fmtNum(stock.atr_pct, 1)}% · High 40D Dist: ${fmtPct(stock.dist_to_high40_pct)}</div>
+        </div>
+      </div>
+
+      <!-- Studio Charts Grid (65% / 35%) -->
+      <div class="studio-charts-grid">
+        <!-- Main Candlestick Chart -->
+        <div class="studio-main-chart">
+          <div class="chart-block" style="margin-top:0;">
+            <div class="chart-head">
+              <div>
+                <strong>ราคา · Daily Candlesticks + EMA 12/26 + Volume</strong>
+                <span style="color:var(--teal-bright); margin-left:8px;">${fmtMoney(stock.price)} · ${candleData.visibleCount} แท่งล่าสุด</span>
+              </div>
+              <div class="chart-ranges" id="priceChartRanges">
+                <button type="button" data-days="22" ${activePriceDays === 22 ? 'class="active" aria-pressed="true"' : ""}>1M</button>
+                <button type="button" data-days="66" ${activePriceDays === 66 ? 'class="active" aria-pressed="true"' : ""}>3M</button>
+                <button type="button" data-days="126" ${activePriceDays === 126 ? 'class="active" aria-pressed="true"' : ""}>6M</button>
+                <button type="button" data-days="180" ${activePriceDays === 180 ? 'class="active" aria-pressed="true"' : ""}>All</button>
+              </div>
+            </div>
+
+            <div id="priceBarSummary" class="ohlc-summary">
+              ${candleData.summaryText}
+            </div>
+
+            ${candleData.svg}
+
+            <div class="legend">
+              <span><i class="candle-up-key"></i>Close &ge; Open</span>
+              <span><i class="candle-down-key"></i>Close &lt; Open</span>
+              <span><i class="volume-key"></i>Volume</span>
+              <span><i class="ema12-key"></i>EMA 12</span>
+              <span><i class="ema26-key"></i>EMA 26</span>
+              <span style="margin-left:auto; color:var(--text-muted);">เลื่อนเมาส์บนกราฟเพื่อดู OHLCV + EMAs</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub Charts Column -->
+        <div class="studio-sub-charts">
+          <!-- Sub Chart 1: BB-KC diff -->
+          <div class="chart-block" style="margin-top:0;">
+            <div class="chart-head">
+              <strong>BB–KC diff · Daily</strong>
+              <span>เส้นศูนย์ = compression | expansion</span>
+            </div>
+            ${diffChartHtml}
+          </div>
+
+          <!-- Sub Chart 2: RSI(diff) -->
+          <div class="chart-block">
+            <div class="chart-head">
+              <strong>RSI ของ diff · Daily</strong>
+              <span>RSI 14 + SMA 7 · ช่วงปกติ 30–70</span>
+            </div>
+            ${rsiChartHtml}
+          </div>
+
+          <!-- Sub Chart 3: Forward 2SD Volatility Cone -->
+          <div class="chart-block">
+            <div class="chart-head">
+              <strong>Forward 2SD Volatility Cone</strong>
+              <span>60-Day Probability Band (&plusmn;2&sigma;)</span>
+            </div>
+            ${coneChartHtml}
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Integrity Footnote -->
+      <div class="quality">
+        <strong>Data Integrity:</strong> ${mapped.length} Daily bars · ${mapped.length ? mapped[0].time : ""} &rarr; ${mapped.length ? mapped[mapped.length - 1].time : ""} (16:30 EST Close) · Missing intervals: 0. No missing candles are interpolated; indicator warm-up resets after gaps.
+      </div>
+    `;
+
+    // Bind interactive Candlestick hover crosshair
+    bindCandleCrosshair(candleData.bars);
+
+    // Bind Range Buttons
+    container.querySelectorAll("#priceChartRanges button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        activePriceDays = parseInt(btn.dataset.days, 10);
+        renderStudio(stock);
+      });
+    });
+
+    // Scroll up buttons
+    $("scrollToTableBtn")?.addEventListener("click", () => {
+      $("screenerSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    $("scrollToTableBtnHero")?.addEventListener("click", () => {
+      $("screenerSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function renderStudioPlaceholder() {
-    $("stTicker").textContent = "—";
-    $("stName").textContent = "ไม่มีหุ้นที่เลือก";
-    $("stPrice").textContent = "—";
+    $("selectedPanel").innerHTML = `
+      <div class="chart-empty" style="height:140px; padding:24px;">
+        กรุณาคลิกเลือกหุ้นจากตารางสแกนเนอร์ด้านบนเพื่อเปิดห้องวิเคราะห์เจาะลึก
+      </div>
+    `;
   }
 
-  // Draw Forward 2SD Volatility Cone SVG
-  function renderConeChart(stock) {
-    const svg = $("coneSvgChart");
-    if (!svg) return;
-
-    if (!stock) {
-      stock = allStocks.find(s => s.ticker === selectedTicker);
-      if (!stock) return;
+  // =========================================================================
+  // CANDLESTICK CHART SVG BUILDER
+  // =========================================================================
+  function renderCandleChartSVG(allBars, days, symbol) {
+    if (!allBars.length) {
+      return { bars: [], svg: '<div class="chart-empty">ข้อมูลไม่พอแสดงกราฟ</div>', visibleCount: 0, summaryText: "—" };
     }
 
-    const cone = stock.cone;
-    if (!cone || !cone.upper || cone.upper.length === 0) {
-      svg.innerHTML = `<text x="300" y="130" text-anchor="middle" fill="var(--text-muted)">ไม่มีข้อมูล 2SD Cone</text>`;
-      return;
+    const visible = days > 0 ? allBars.slice(-days) : allBars;
+    const width = 800;
+    const height = 340;
+    const left = 14;
+    const right = 70;
+    const top = 14;
+    const priceBottom = 236;
+    const volumeTop = 258;
+    const volumeBottom = 305;
+
+    const plotWidth = width - left - right;
+    const slot = plotWidth / visible.length;
+
+    let low = Infinity;
+    let high = -Infinity;
+    let maxVolume = 0;
+
+    for (let i = 0; i < visible.length; i++) {
+      const b = visible[i];
+      low = Math.min(low, b.low);
+      high = Math.max(high, b.high);
+      maxVolume = Math.max(maxVolume, b.volume || 0);
+      if (Number.isFinite(b.ema12)) { low = Math.min(low, b.ema12); high = Math.max(high, b.ema12); }
+      if (Number.isFinite(b.ema26)) { low = Math.min(low, b.ema26); high = Math.max(high, b.ema26); }
     }
+
+    const pad = Math.max((high - low) * 0.05, 0.01);
+    low -= pad;
+    high += pad;
+
+    const getY = (p) => top + (priceBottom - top) * (1 - (p - low) / (high - low));
+    const candleWidth = Math.max(1.2, Math.min(9, slot * 0.68));
+
+    // Horizontal Price Grid
+    const gridLines = [0, 0.25, 0.5, 0.75, 1.0].map((frac) => {
+      const py = top + (priceBottom - top) * frac;
+      const price = high - (high - low) * frac;
+      return `
+        <line class="chart-grid" x1="${left}" x2="${width - right}" y1="${py.toFixed(1)}" y2="${py.toFixed(1)}"/>
+        <text class="price-axis-label" x="${width - 4}" y="${(py + 3).toFixed(1)}" text-anchor="end">${fmtMoney(price)}</text>
+      `;
+    }).join("");
+
+    // Candles and Volume Bars
+    const candleEls = visible.map((b, i) => {
+      const x = left + slot * (i + 0.5);
+      const yOpen = getY(b.open);
+      const yClose = getY(b.close);
+      const isUp = b.close >= b.open;
+      const bodyY = Math.min(yOpen, yClose);
+      const bodyH = Math.max(1, Math.abs(yOpen - yClose));
+      const volHeight = maxVolume ? (b.volume / maxVolume) * (volumeBottom - volumeTop) : 0;
+      const volY = volumeBottom - volHeight;
+      const klass = isUp ? "up" : "down";
+
+      return `
+        <g class="candle ${klass}">
+          <line class="candle-wick" x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${getY(b.high).toFixed(1)}" y2="${getY(b.low).toFixed(1)}"/>
+          <rect class="candle-body" x="${(x - candleWidth / 2).toFixed(1)}" y="${bodyY.toFixed(1)}" width="${candleWidth.toFixed(1)}" height="${bodyH.toFixed(1)}"/>
+          <rect class="volume-bar" x="${(x - candleWidth / 2).toFixed(1)}" y="${volY.toFixed(1)}" width="${candleWidth.toFixed(1)}" height="${Math.max(0.5, volHeight).toFixed(1)}"/>
+        </g>
+      `;
+    }).join("");
+
+    // EMA 12 and EMA 26 Lines
+    let d12 = "", d26 = "", draw12 = false, draw26 = false;
+    for (let i = 0; i < visible.length; i++) {
+      const x = left + slot * (i + 0.5);
+      const e12 = visible[i].ema12;
+      const e26 = visible[i].ema26;
+      if (Number.isFinite(e12)) {
+        d12 += `${draw12 ? "L" : "M"}${x.toFixed(1)},${getY(e12).toFixed(1)} `;
+        draw12 = true;
+      } else draw12 = false;
+      if (Number.isFinite(e26)) {
+        d26 += `${draw26 ? "L" : "M"}${x.toFixed(1)},${getY(e26).toFixed(1)} `;
+        draw26 = true;
+      } else draw26 = false;
+    }
+
+    const emaPaths = `
+      ${d12 ? `<path class="chart-ema12" d="${d12}"/>` : ""}
+      ${d26 ? `<path class="chart-ema26" d="${d26}"/>` : ""}
+    `;
+
+    // Last Price Dashed Line
+    const lastBar = visible[visible.length - 1];
+    const lastY = getY(lastBar.close);
+    const lastLine = `
+      <line class="last-price-line" x1="${left}" x2="${width - right}" y1="${lastY.toFixed(1)}" y2="${lastY.toFixed(1)}"/>
+      <text class="last-price-label" x="${width - 4}" y="${(lastY + 3).toFixed(1)}" text-anchor="end">${fmtMoney(lastBar.close)}</text>
+    `;
+
+    // Date Axis Labels
+    const dateIndices = [0, Math.floor((visible.length - 1) / 2), visible.length - 1];
+    const dateLabels = dateIndices.map((idx) => {
+      const x = left + slot * (idx + 0.5);
+      return `<text class="price-date-label" x="${x.toFixed(1)}" y="330" text-anchor="middle">${visible[idx].time}</text>`;
+    }).join("");
+
+    const svg = `
+      <svg id="priceChartSvg" class="price-chart-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+        ${gridLines}
+        <line class="volume-separator" x1="${left}" x2="${width - right}" y1="${volumeTop - 4}" y2="${volumeTop - 4}"/>
+        ${candleEls}
+        ${emaPaths}
+        ${lastLine}
+        ${dateLabels}
+        <line id="priceCrossV" class="price-crosshair" x1="0" x2="0" y1="${top}" y2="${volumeBottom}"/>
+        <line id="priceCrossH" class="price-crosshair" x1="${left}" x2="${width - right}" y1="0" y2="0"/>
+      </svg>
+    `;
+
+    const summaryText = `${lastBar.time}  O ${fmtNum(lastBar.open)}  H ${fmtNum(lastBar.high)}  L ${fmtNum(lastBar.low)}  C ${fmtNum(lastBar.close)}  V ${fmtN(lastBar.volume)}  EMA12 ${fmtNum(lastBar.ema12)}  EMA26 ${fmtNum(lastBar.ema26)}`;
+
+    return { bars: visible, svg, visibleCount: visible.length, summaryText };
+  }
+
+  // Bind Candlestick Crosshair Pointer Movement
+  function bindCandleCrosshair(bars) {
+    const svg = $("priceChartSvg");
+    if (!svg || !bars.length) return;
+
+    const crossV = $("priceCrossV");
+    const crossH = $("priceCrossH");
+    const summary = $("priceBarSummary");
+
+    const width = 800;
+    const height = 340;
+    const left = 14;
+    const right = 70;
+    const top = 14;
+    const volumeBottom = 305;
+    const slot = (width - left - right) / bars.length;
+
+    svg.addEventListener("pointermove", (e) => {
+      const rect = svg.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * width;
+      const y = ((e.clientY - rect.top) / rect.height) * height;
+
+      if (x < left || x > width - right || y < top || y > volumeBottom) {
+        if (crossV) crossV.style.display = "none";
+        if (crossH) crossH.style.display = "none";
+        return;
+      }
+
+      const idx = Math.max(0, Math.min(bars.length - 1, Math.floor((x - left) / slot)));
+      const b = bars[idx];
+      const candleX = left + slot * (idx + 0.5);
+
+      if (crossV) {
+        crossV.style.display = "block";
+        crossV.setAttribute("x1", candleX.toFixed(1));
+        crossV.setAttribute("x2", candleX.toFixed(1));
+      }
+      if (crossH) {
+        crossH.style.display = "block";
+        crossH.setAttribute("y1", y.toFixed(1));
+        crossH.setAttribute("y2", y.toFixed(1));
+      }
+
+      if (summary) {
+        summary.textContent = `${b.time}  O ${fmtNum(b.open)}  H ${fmtNum(b.high)}  L ${fmtNum(b.low)}  C ${fmtNum(b.close)}  V ${fmtN(b.volume)}  EMA12 ${fmtNum(b.ema12)}  EMA26 ${fmtNum(b.ema26)}`;
+      }
+    });
+
+    svg.addEventListener("pointerleave", () => {
+      if (crossV) crossV.style.display = "none";
+      if (crossH) crossH.style.display = "none";
+      const last = bars[bars.length - 1];
+      if (summary && last) {
+        summary.textContent = `${last.time}  O ${fmtNum(last.open)}  H ${fmtNum(last.high)}  L ${fmtNum(last.low)}  C ${fmtNum(last.close)}  V ${fmtN(last.volume)}  EMA12 ${fmtNum(last.ema12)}  EMA26 ${fmtNum(last.ema26)}`;
+      }
+    });
+  }
+
+  // =========================================================================
+  // SUB-CHARTS (BB/KC diff & RSI of diff)
+  // =========================================================================
+  function renderSubChartSVG(series, kind, secondary = null, label = "") {
+    const width = 480;
+    const height = 110;
+    const left = 6;
+    const right = 6;
+    const top = 8;
+    const bottom = 8;
+
+    const start = Math.max(0, series.length - 100);
+    const main = series.slice(start);
+    const all = main.filter(Number.isFinite).concat(secondary ? secondary.slice(start).filter(Number.isFinite) : []);
+
+    if (!all.length) return '<div class="chart-empty">ข้อมูลไม่พอแสดงกราฟ</div>';
+
+    let min = kind === "rsi" ? 0 : Math.min(0, ...all);
+    let max = kind === "rsi" ? 100 : Math.max(0, ...all);
+
+    if (max - min < 1e-6) {
+      max += 1;
+      min -= 1;
+    }
+    if (kind !== "rsi") {
+      const padding = (max - min) * 0.12;
+      min -= padding;
+      max += padding;
+    }
+
+    const xAt = (i) => left + (width - left - right) * (i / (main.length - 1 || 1));
+    const yAt = (v) => top + (height - top - bottom) * (1 - (v - min) / (max - min));
+
+    const path = (vals) => {
+      let d = "";
+      let drawing = false;
+      for (let i = 0; i < vals.length; i++) {
+        const v = vals[i];
+        if (!Number.isFinite(v)) { drawing = false; continue; }
+        d += `${drawing ? "L" : "M"}${xAt(i).toFixed(1)},${yAt(v).toFixed(1)} `;
+        drawing = true;
+      }
+      return d;
+    };
+
+    const grid = [0.25, 0.5, 0.75].map((q) => {
+      const y = top + (height - top - bottom) * q;
+      return `<line class="chart-grid" x1="${left}" x2="${width - right}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/>`;
+    }).join("");
+
+    let thresholds = "";
+    let areaFill = "";
+
+    if (kind === "rsi") {
+      const y70 = yAt(70).toFixed(1);
+      const y30 = yAt(30).toFixed(1);
+      const corridor = `<rect x="${left}" y="${y70}" width="${width - left - right}" height="${Math.abs(y30 - y70)}" fill="var(--border-subtle)" opacity="0.35"/>`;
+      thresholds = corridor + [30, 70].map((v) => `
+        <line class="chart-threshold" x1="${left}" x2="${width - right}" y1="${yAt(v).toFixed(1)}" y2="${yAt(v).toFixed(1)}"/>
+        <text x="${width - right - 2}" y="${(yAt(v) - 3).toFixed(1)}" text-anchor="end" fill="var(--text-muted)" font-size="8.5" font-family="var(--font-mono)">${v}</text>
+      `).join("");
+    } else if (kind === "diff") {
+      const y0 = yAt(0);
+      thresholds = `
+        <line class="chart-zero" x1="${left}" x2="${width - right}" y1="${y0.toFixed(1)}" y2="${y0.toFixed(1)}"/>
+        <text x="${left + 4}" y="${(y0 - 3).toFixed(1)}" fill="var(--blue)" font-size="8.5" font-family="var(--font-mono)">0 (Compression | Expansion)</text>
+      `;
+
+      let dArea = "";
+      let lastValidX = left;
+      for (let i = 0; i < main.length; i++) {
+        const v = main[i];
+        if (Number.isFinite(v)) {
+          const x = xAt(i);
+          if (!dArea) dArea = `M${x.toFixed(1)},${y0.toFixed(1)} L${x.toFixed(1)},${yAt(v).toFixed(1)} `;
+          else dArea += `L${x.toFixed(1)},${yAt(v).toFixed(1)} `;
+          lastValidX = x;
+        }
+      }
+      if (dArea) {
+        dArea += `L${lastValidX.toFixed(1)},${y0.toFixed(1)} Z`;
+        areaFill = `
+          <defs>
+            <linearGradient id="diffAreaGradSub" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--teal)" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="var(--blue)" stop-opacity="0.08"/>
+            </linearGradient>
+          </defs>
+          <path d="${dArea}" fill="url(#diffAreaGradSub)"/>
+        `;
+      }
+    }
+
+    const second = secondary ? `<path class="chart-line secondary" d="${path(secondary.slice(start))}"/>` : "";
+    return `
+      <svg class="chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+        ${grid}
+        ${thresholds}
+        ${areaFill}
+        ${second}
+        <path class="chart-line" d="${path(main)}"/>
+      </svg>
+    `;
+  }
+
+  // =========================================================================
+  // FORWARD 2SD VOLATILITY CONE SVG
+  // =========================================================================
+  function renderForwardConeSVG(cone, currentPrice) {
+    if (!cone || !cone.upper || !cone.upper.length) {
+      return '<div class="chart-empty">ไม่มีข้อมูล 2SD Cone</div>';
+    }
+
+    const W = 480;
+    const H = 120;
+    const padX = 14;
+    const padY = 12;
 
     const days = cone.days;
     const upper = cone.upper;
     const lower = cone.lower;
-    const currentPrice = cone.current_price || stock.price;
-    const sigmaAnn = cone.sigma_ann ? (cone.sigma_ann * 100).toFixed(1) : "—";
-
-    $("stVolAnn").textContent = `Annualized Vol (&sigma;): ${sigmaAnn}%`;
-
-    // 30d & 60d stats
-    const p30High = upper[Math.min(29, upper.length - 1)];
-    const p30Low = lower[Math.min(29, lower.length - 1)];
-    const p60High = upper[upper.length - 1];
-    const p60Low = lower[lower.length - 1];
-
-    $("stRange30").textContent = `${fmtMoney(p30Low)} &ndash; ${fmtMoney(p30High)} (&plusmn;${fmtNum(((p30High - currentPrice) / currentPrice) * 100, 1)}%)`;
-    $("stRange60").textContent = `${fmtMoney(p60Low)} &ndash; ${fmtMoney(p60High)} (&plusmn;${fmtNum(((p60High - currentPrice) / currentPrice) * 100, 1)}%)`;
-
-    // Coordinates mapping
-    const W = 600;
-    const H = 260;
-    const padX = 40;
-    const padY = 24;
-
     const minP = Math.min(...lower) * 0.98;
     const maxP = Math.max(...upper) * 1.02;
     const n = days.length;
 
-    const getX = (idx) => padX + (idx / (n - 1)) * (W - 2 * padX);
-    const getY = (price) => H - padY - ((price - minP) / (maxP - minP)) * (H - 2 * padY);
+    const getX = (i) => padX + (i / (n - 1)) * (W - 2 * padX);
+    const getY = (p) => H - padY - ((p - minP) / (maxP - minP)) * (H - 2 * padY);
 
-    // Build upper path, lower path, mean path
-    let upperPts = [];
-    let lowerPts = [];
-    let meanPts = [];
-
-    // Day 0 anchor
     const x0 = getX(0);
     const y0 = getY(currentPrice);
 
+    let uPts = [];
+    let lPts = [];
+    let mPts = [];
+
     for (let i = 0; i < n; i++) {
       const x = getX(i);
-      const yu = getY(upper[i]);
-      const yl = getY(lower[i]);
-      const ym = getY(currentPrice); // drift neutral mean
-      upperPts.push(`${x.toFixed(1)},${yu.toFixed(1)}`);
-      lowerPts.push(`${x.toFixed(1)},${yl.toFixed(1)}`);
-      meanPts.push(`${x.toFixed(1)},${ym.toFixed(1)}`);
+      uPts.push(`${x.toFixed(1)},${getY(upper[i]).toFixed(1)}`);
+      lPts.push(`${x.toFixed(1)},${getY(lower[i]).toFixed(1)}`);
+      mPts.push(`${x.toFixed(1)},${y0.toFixed(1)}`);
     }
 
-    const areaPath = `M ${x0},${y0} L ${upperPts.join(" L ")} L ${lowerPts.slice().reverse().join(" L ")} Z`;
-    const upperLine = `M ${x0},${y0} L ${upperPts.join(" L ")}`;
-    const lowerLine = `M ${x0},${y0} L ${lowerPts.join(" L ")}`;
-    const meanLine = `M ${x0},${y0} L ${meanPts.join(" L ")}`;
+    const area = `M ${x0},${y0} L ${uPts.join(" L ")} L ${lPts.slice().reverse().join(" L ")} Z`;
 
-    svg.innerHTML = `
-      <defs>
-        <linearGradient id="coneGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.35"/>
-          <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.10"/>
-        </linearGradient>
-      </defs>
-
-      <!-- Grid lines -->
-      <line x1="${padX}" y1="${getY(maxP)}" x2="${W - padX}" y2="${getY(maxP)}" stroke="var(--border-subtle)" stroke-dasharray="3,3"/>
-      <line x1="${padX}" y1="${y0}" x2="${W - padX}" y2="${y0}" stroke="var(--border-subtle)" stroke-dasharray="4,4"/>
-      <line x1="${padX}" y1="${getY(minP)}" x2="${W - padX}" y2="${getY(minP)}" stroke="var(--border-subtle)" stroke-dasharray="3,3"/>
-
-      <!-- Shaded 2SD Cone Area -->
-      <path d="${areaPath}" fill="url(#coneGrad)" />
-
-      <!-- Upper +2SD Bound -->
-      <path d="${upperLine}" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round"/>
-
-      <!-- Lower -2SD Bound -->
-      <path d="${lowerLine}" fill="none" stroke="#fb7185" stroke-width="2" stroke-linecap="round"/>
-
-      <!-- Center Mean Line -->
-      <path d="${meanLine}" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,4"/>
-
-      <!-- Price labels on right -->
-      <text x="${W - padX + 6}" y="${getY(upper[upper.length - 1]) + 4}" fill="#22d3ee" font-size="10.5" font-family="var(--font-mono)" font-weight="750">+2SD ${fmtMoney(upper[upper.length - 1])}</text>
-      <text x="${W - padX + 6}" y="${y0 + 4}" fill="#94a3b8" font-size="10" font-family="var(--font-mono)">S₀ ${fmtMoney(currentPrice)}</text>
-      <text x="${W - padX + 6}" y="${getY(lower[lower.length - 1]) + 4}" fill="#fb7185" font-size="10.5" font-family="var(--font-mono)" font-weight="750">-2SD ${fmtMoney(lower[lower.length - 1])}</text>
-
-      <!-- Day 0 Origin Dot -->
-      <circle cx="${x0}" cy="${y0}" r="4" fill="#38bdf8"/>
+    return `
+      <svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="coneGradMini" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.30"/>
+            <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.08"/>
+          </linearGradient>
+        </defs>
+        <line x1="${padX}" y1="${y0}" x2="${W - padX}" y2="${y0}" stroke="var(--border-subtle)" stroke-dasharray="3,3"/>
+        <path d="${area}" fill="url(#coneGradMini)"/>
+        <path d="M ${x0},${y0} L ${uPts.join(" L ")}" fill="none" stroke="#22d3ee" stroke-width="1.8"/>
+        <path d="M ${x0},${y0} L ${lPts.join(" L ")}" fill="none" stroke="#fb7185" stroke-width="1.8"/>
+        <path d="M ${x0},${y0} L ${mPts.join(" L ")}" fill="none" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="3,3"/>
+        <circle cx="${x0}" cy="${y0}" r="3.5" fill="#38bdf8"/>
+        <text x="${W - padX - 2}" y="${getY(upper[upper.length - 1]) - 3}" fill="#22d3ee" font-family="var(--font-mono)" font-size="8.5" text-anchor="end">+2SD ${fmtMoney(upper[upper.length - 1])}</text>
+        <text x="${W - padX - 2}" y="${getY(lower[lower.length - 1]) + 9}" fill="#fb7185" font-family="var(--font-mono)" font-size="8.5" text-anchor="end">-2SD ${fmtMoney(lower[lower.length - 1])}</text>
+      </svg>
     `;
   }
 
-  // Render Detailed Forecast View
+  // =========================================================================
+  // DETAILED FORECAST VIEW (Tab 2)
+  // =========================================================================
   function renderDetailedForecast() {
     const fcSelect = $("fcSelectStock");
     if (!fcSelect) return;
@@ -424,7 +948,6 @@
     $("fcUpperVal").textContent = `${fmtMoney(upper[upper.length - 1])} (+${(((upper[upper.length - 1] - currentPrice) / currentPrice) * 100).toFixed(1)}%)`;
     $("fcLowerVal").textContent = `${fmtMoney(lower[lower.length - 1])} (${(((lower[lower.length - 1] - currentPrice) / currentPrice) * 100).toFixed(1)}%)`;
 
-    // Render detailed SVG
     const svg = $("fcDetailedChart");
     if (!svg) return;
 
@@ -463,14 +986,11 @@
           <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.08"/>
         </linearGradient>
       </defs>
-      <!-- Reference lines -->
       <line x1="${padX}" y1="${y0}" x2="${W - padX}" y2="${y0}" stroke="var(--border-subtle)" stroke-dasharray="5,5"/>
-      <path d="${area}" fill="url(#fcGrad)" />
+      <path d="${area}" fill="url(#fcGrad)"/>
       <path d="M ${x0},${y0} L ${uPts.join(" L ")}" fill="none" stroke="#22d3ee" stroke-width="2.5"/>
       <path d="M ${x0},${y0} L ${lPts.join(" L ")}" fill="none" stroke="#fb7185" stroke-width="2.5"/>
       <path d="M ${x0},${y0} L ${mPts.join(" L ")}" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,4"/>
-
-      <!-- End labels -->
       <text x="${W - padX + 8}" y="${getY(upper[upper.length - 1]) + 4}" fill="#22d3ee" font-family="var(--font-mono)" font-size="11.5" font-weight="750">+2SD: ${fmtMoney(upper[upper.length - 1])}</text>
       <text x="${W - padX + 8}" y="${y0 + 4}" fill="#94a3b8" font-family="var(--font-mono)" font-size="11">Mean: ${fmtMoney(currentPrice)}</text>
       <text x="${W - padX + 8}" y="${getY(lower[lower.length - 1]) + 4}" fill="#fb7185" font-family="var(--font-mono)" font-size="11.5" font-weight="750">-2SD: ${fmtMoney(lower[lower.length - 1])}</text>

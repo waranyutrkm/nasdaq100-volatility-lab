@@ -408,6 +408,26 @@ def compute_stock_quant_score(
 
     phase_info = classify_phase(cur_diff, prev_diff)
 
+    # Extract last 180 daily bars for Candlestick & Sub-chart visualization (Compact tuple format)
+    # Format: [time, open, high, low, close, volume, ema12, ema26, diff, rsi, rsi_smooth]
+    lookback_bars = min(180, n)
+    recent_bars = []
+    for idx_b in range(n - lookback_bars, n):
+        t_str = str(bars_df.index[idx_b].date())
+        recent_bars.append([
+            t_str,
+            round(float(bars_df["open"].iloc[idx_b]), 2),
+            round(float(bars_df["high"].iloc[idx_b]), 2),
+            round(float(bars_df["low"].iloc[idx_b]), 2),
+            round(float(bars_df["close"].iloc[idx_b]), 2),
+            int(bars_df["volume"].iloc[idx_b]),
+            round(float(ind["ema12"][idx_b]), 2) if np.isfinite(ind["ema12"][idx_b]) else None,
+            round(float(ind["ema26"][idx_b]), 2) if np.isfinite(ind["ema26"][idx_b]) else None,
+            round(float(ind["diff"][idx_b]), 2) if np.isfinite(ind["diff"][idx_b]) else None,
+            round(float(ind["rsi"][idx_b]), 1) if np.isfinite(ind["rsi"][idx_b]) else None,
+            round(float(ind["rsi_smooth"][idx_b]), 1) if np.isfinite(ind["rsi_smooth"][idx_b]) else None,
+        ])
+
     return {
         "ticker": symbol,
         "name": company_name,
@@ -436,4 +456,5 @@ def compute_stock_quant_score(
         "breakdown": breakdown,
         "playbook": playbook,
         "cone": cone_res,
+        "bars": recent_bars,
     }

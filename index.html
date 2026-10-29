@@ -320,34 +320,195 @@ table.data-table tr.selected { background: var(--blue-bg); border-left: 3px soli
 .score-b { background: var(--amber-bg); color: var(--amber-bright); border: 1px solid var(--amber-border); }
 .score-c { background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border-subtle); }
 
-/* Deep-Dive Studio */
-.studio-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 16px; margin-top: 16px; }
-@media (max-width: 1080px) { .studio-grid { grid-template-columns: 1fr; } }
-
-.studio-head {
-  display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 12px; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;
+/* ========================================================
+   Selected Stock Analysis Studio (Match Original Quality)
+   ======================================================== */
+.studio-panel { margin-top: 24px; padding: 20px; }
+.studio-hero {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(18,26,44,0.9) 0%, rgba(14,21,36,0.98) 100%);
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+  margin-bottom: 16px;
 }
-.studio-ticker { font-size: 22px; font-weight: 900; font-family: var(--font-mono); color: var(--text-primary); }
-.studio-name { font-size: 13px; color: var(--text-muted); margin-left: 8px; }
-.studio-price { font-size: 18px; font-weight: 850; font-family: var(--font-mono); color: var(--teal-bright); }
-
-.pillar-row { display: flex; flex-direction: column; gap: 3px; margin-bottom: 12px; padding: 8px 10px; background: var(--bg-canvas); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); }
-.pillar-head { display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 750; }
-.pillar-score { font-family: var(--font-mono); color: var(--blue-bright); }
-.pillar-reason { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
-
-.playbook-card {
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(16, 185, 129, 0.08));
-  border: 1px solid var(--blue-border); border-radius: var(--radius-md); padding: 14px; margin-top: 14px;
+.studio-hero-left { display: flex; align-items: center; gap: 14px; }
+.studio-avatar {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(6,182,212,0.2));
+  border: 1px solid var(--teal-border); color: var(--teal-bright);
+  font-weight: 900; font-size: 14.5px; font-family: var(--font-mono);
+  display: grid; place-items: center; letter-spacing: -.02em;
 }
-.playbook-title { font-size: 12px; font-weight: 850; color: var(--blue-bright); text-transform: uppercase; font-family: var(--font-mono); margin-bottom: 6px; }
-.playbook-text { font-size: 12px; color: var(--text-primary); line-height: 1.6; }
+.studio-identity { display: flex; flex-direction: column; gap: 3px; }
+.studio-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.studio-symbol { font-size: 22px; font-weight: 900; color: var(--text-primary); font-family: var(--font-mono); line-height: 1; }
+.studio-rank-badge {
+  font-size: 10px; font-weight: 850; color: var(--text-muted);
+  background: var(--bg-canvas); border: 1px solid var(--border-subtle);
+  padding: 2px 7px; border-radius: 4px; font-family: var(--font-mono);
+}
+.studio-name-row { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text-muted); }
+.studio-fullname { font-weight: 600; color: var(--text-primary); }
 
-/* SVG Chart Container */
-.chart-box { background: var(--bg-canvas); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px; position: relative; }
-.chart-title { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-mono); margin-bottom: 8px; display: flex; justify-content: space-between; }
-svg.cone-chart { width: 100%; height: 260px; overflow: visible; }
+.studio-hero-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.studio-asof-meta { text-align: right; font-size: 10.5px; line-height: 1.3; }
+.asof-label { color: var(--text-muted); display: block; }
+.asof-val { color: var(--text-primary); font-family: var(--font-mono); font-size: 11px; }
+.studio-hero-actions { display: flex; align-items: center; gap: 8px; }
+
+.btn-tv {
+  background: rgba(41, 98, 255, 0.15); color: #60a5fa; border: 1px solid rgba(41, 98, 255, 0.35);
+  font-weight: 800; font-size: 11px; padding: 4px 10px; border-radius: var(--radius-sm);
+}
+.btn-tv:hover { background: rgba(41, 98, 255, 0.25); color: #93c5fd; }
+
+.btn-yf {
+  background: rgba(168, 85, 247, 0.15); color: var(--purple-bright); border: 1px solid var(--purple-border);
+  font-weight: 800; font-size: 11px; padding: 4px 10px; border-radius: var(--radius-sm);
+}
+.btn-yf:hover { background: rgba(168, 85, 247, 0.25); color: #e9d5ff; }
+
+/* Studio Score Stage */
+.studio-score-stage {
+  display: grid; grid-template-columns: 290px 1fr; gap: 16px; margin: 16px 0; align-items: stretch;
+}
+.studio-scorecard-box {
+  background: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(6,182,212,0.05));
+  border: 1px solid rgba(168,85,247,0.3); border-radius: var(--radius-md);
+  padding: 16px 18px; display: flex; flex-direction: column; justify-content: space-between;
+}
+.scorecard-top { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.scorecard-badge {
+  width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+  font-size: 22px; font-weight: 900; flex-shrink: 0; font-family: var(--font-mono);
+}
+.scorecard-badge.grade-s { background: linear-gradient(135deg,#a855f7,#7c3aed); color: #fff; box-shadow: 0 0 16px rgba(168,85,247,0.5); }
+.scorecard-badge.grade-a { background: linear-gradient(135deg,#10b981,#059669); color: #fff; box-shadow: 0 0 14px rgba(16,185,129,0.4); }
+.scorecard-badge.grade-b { background: var(--amber-bg); color: #fbbf24; border: 1px solid var(--amber-border); }
+.scorecard-badge.grade-c { background: var(--bg-canvas); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+.scorecard-meta { display: flex; flex-direction: column; gap: 2px; }
+.scorecard-total { display: flex; align-items: baseline; gap: 5px; }
+.score-num { font-size: 32px; font-weight: 900; color: var(--text-primary); font-family: var(--font-mono); line-height: 1; }
+.score-denom { font-size: 13px; color: var(--text-muted); font-weight: 700; }
+.scorecard-grade-label { font-size: 11.5px; color: var(--text-muted); font-weight: 650; }
+.scorecard-bar-bg { height: 6px; background: var(--bg-canvas); border-radius: 99px; overflow: hidden; margin: 10px 0; }
+.scorecard-bar-fill { height: 100%; border-radius: 99px; }
+.scorecard-bar-fill.fill-s { background: linear-gradient(90deg, #a855f7, #06b6d4); }
+.scorecard-bar-fill.fill-a { background: linear-gradient(90deg, #10b981, #06b6d4); }
+.scorecard-bar-fill.fill-b { background: var(--amber); }
+.scorecard-bar-fill.fill-c { background: var(--text-muted); }
+.scorecard-tag-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 4px; }
+.scorecard-hint { font-size: 10.5px; color: var(--text-muted); font-weight: 600; }
+
+/* 5 Pillars Box */
+.studio-pillars-box {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px;
+}
+.studio-pillar-item {
+  background: var(--bg-canvas); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md); padding: 12px 14px;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.pillar-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
+.pillar-label { font-size: 9px; font-weight: 900; color: var(--text-muted); letter-spacing: .06em; text-transform: uppercase; font-family: var(--font-mono); }
+.pillar-score { font-size: 13px; color: var(--text-primary); font-family: var(--font-mono); font-weight: 850; }
+.pillar-bar { height: 4px; background: var(--bg-card); border-radius: 99px; overflow: hidden; margin-bottom: 8px; }
+.pillar-bar-fill { height: 100%; background: linear-gradient(90deg, var(--blue), var(--teal)); border-radius: 99px; }
+.pillar-reason { font-size: 11px; font-weight: 750; color: var(--text-primary); margin-bottom: 3px; line-height: 1.3; }
+.pillar-sub { font-size: 9.5px; color: var(--text-muted); line-height: 1.2; }
+
+/* Advice Banner */
+.studio-advice-container { margin: 14px 0; }
+.beginner-advice { padding: 12px 16px; border-radius: var(--radius-md); font-size: 12px; line-height: 1.6; }
+.advice-buy { background: var(--teal-bg); border: 1px solid var(--teal-border); color: var(--teal-bright); }
+.advice-coil { background: var(--blue-bg); border: 1px solid var(--blue-border); color: var(--blue-bright); }
+.advice-danger { background: var(--red-bg); border: 1px solid var(--red-border); color: var(--red-bright); }
+.advice-watch { background: var(--amber-bg); border: 1px solid var(--amber-border); color: var(--amber); }
+.advice-neutral { background: var(--bg-canvas); border: 1px solid var(--border-subtle); color: var(--text-muted); }
+
+/* Core KPIs Grid */
+.studio-kpis {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 16px 0;
+}
+.kpi-card {
+  background: var(--bg-canvas); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md); padding: 12px 14px;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.kpi-label { display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); font-size: 10px; font-weight: 800; text-transform: uppercase; font-family: var(--font-mono); }
+.kpi-val { font-size: 18px; font-weight: 900; color: var(--text-primary); font-family: var(--font-mono); margin: 6px 0 2px; }
+.kpi-sub { font-size: 10px; color: var(--text-muted); line-height: 1.3; }
+
+/* Studio Charts Grid (Main Candlestick vs Sub-Charts) */
+.studio-charts-grid {
+  display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1.1fr);
+  gap: 16px; margin-top: 16px; align-items: start;
+}
+.studio-main-chart { min-width: 0; }
+.studio-sub-charts { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+
+/* Candlestick & Sub-Charts SVG */
+.chart-block { margin: 10px 0; background: var(--bg-canvas); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; }
+.chart-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 11px; color: var(--text-primary); font-weight: 800; }
+.chart-head span { color: var(--text-muted); font-size: 10px; font-weight: normal; font-family: var(--font-mono); }
+.chart { width: 100%; height: auto; display: block; margin-top: 6px; overflow: visible; }
+.chart-grid { stroke: var(--border-subtle); stroke-width: 1; }
+.chart-threshold { stroke: var(--amber); stroke-width: 1; stroke-dasharray: 4 4; }
+.chart-zero { stroke: var(--blue); stroke-width: 1.2; stroke-dasharray: 4 4; }
+.chart-line { fill: none; stroke: var(--teal); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.chart-line.secondary { stroke: var(--blue); stroke-width: 1.6; }
+.chart-empty { height: 80px; display: grid; place-items: center; color: var(--text-muted); font-size: 11px; background: var(--bg-canvas); border-radius: 7px; margin-top: 5px; border: 1px dashed var(--border-subtle); }
+
+.chart-ranges { display: flex; gap: 4px; margin: 8px 0 6px; }
+.chart-ranges button {
+  min-width: 40px; min-height: 30px; padding: 3px 9px; border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm); background: var(--bg-canvas); color: var(--text-muted);
+  font-size: 10px; font-weight: 800; transition: all .15s; font-family: var(--font-mono);
+}
+.chart-ranges button.active, .chart-ranges button[aria-pressed="true"] {
+  border-color: var(--teal); background: var(--teal-bg); color: var(--teal-bright);
+}
+
+.ohlc-summary { min-height: 22px; margin: 5px 0; color: var(--text-primary); font-size: 11px; font-family: var(--font-mono); white-space: normal; }
+
+.price-chart-svg { display: block; width: 100%; height: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--bg-card); touch-action: pan-y; }
+.price-axis-label, .price-date-label { fill: var(--text-muted); font-size: 9px; font-family: var(--font-mono); }
+
+.candle.up { color: var(--teal); }
+.candle.down { color: var(--red); }
+.candle-wick { stroke: currentColor; stroke-width: 1.2; }
+.candle-body { fill: currentColor; }
+.volume-bar { fill: currentColor; opacity: .28; }
+.volume-separator { stroke: var(--border-subtle); stroke-width: 1; }
+.last-price-line { stroke: var(--teal); stroke-width: 1.2; stroke-dasharray: 3 3; }
+.last-price-label { fill: var(--teal); font-size: 10px; font-weight: 800; font-family: var(--font-mono); }
+.price-crosshair { display: none; stroke: var(--text-primary); stroke-width: .8; stroke-dasharray: 3 3; pointer-events: none; }
+.chart-ema12 { fill: none; stroke: #06b6d4; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.chart-ema26 { fill: none; stroke: #f59e0b; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.legend { display: flex; gap: 14px; color: var(--text-muted); font-size: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-family: var(--font-mono); }
+.legend .candle-up-key, .legend .candle-down-key, .legend .volume-key { display: inline-block; width: 10px; height: 10px; margin-right: 4px; border-radius: 2px; }
+.legend .candle-up-key { background: var(--teal); }
+.legend .candle-down-key { background: var(--red); }
+.legend .volume-key { background: var(--text-muted); opacity: .5; }
+.legend .ema12-key { display: inline-block; width: 12px; height: 2px; background: #06b6d4; margin-right: 4px; vertical-align: middle; }
+.legend .ema26-key { display: inline-block; width: 12px; height: 2px; background: #f59e0b; margin-right: 4px; vertical-align: middle; }
+
+.quality { background: var(--bg-canvas); border-radius: 7px; padding: 10px 14px; color: var(--text-muted); font-size: 10.5px; border: 1px solid var(--border-subtle); margin-top: 14px; font-family: var(--font-mono); }
+
+/* Responsive Media Queries */
+@media (max-width: 1200px) {
+  .studio-score-stage { grid-template-columns: 1fr; }
+  .studio-charts-grid { grid-template-columns: 1fr; }
+  .studio-pillars-box { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .studio-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 768px) {
+  .studio-pillars-box { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .studio-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .studio-hero { flex-direction: column; align-items: flex-start; }
+  .studio-hero-right { width: 100%; justify-content: space-between; }
+}
 
 /* Views */
 .view { min-width: 0; }
@@ -583,7 +744,7 @@ svg.cone-chart { width: 100%; height: 260px; overflow: visible; }
       </section>
 
       <!-- Screener Table -->
-      <section class="panel" style="padding: 0; overflow: hidden;">
+      <section class="panel" style="padding: 0; overflow: hidden;" id="screenerSection">
         <div class="table-wrap">
           <table class="data-table" id="screenerTable">
             <thead>
@@ -611,109 +772,17 @@ svg.cone-chart { width: 100%; height: 260px; overflow: visible; }
         </div>
       </section>
 
-      <!-- Deep-Dive Studio -->
-      <section class="panel" id="deepDiveStudio">
-        <div class="studio-head">
+      <!-- Selected Stock Analysis Studio (Match Original Quality) -->
+      <section class="panel studio-panel" id="selectedPanelSection" aria-label="ห้องวิเคราะห์เจาะลึกหุ้นที่เลือก">
+        <div class="filter-panel-head">
           <div>
-            <span class="studio-ticker" id="stTicker">—</span>
-            <span class="studio-name" id="stName">—</span>
-            <span id="stSector" class="tag-badge neutral" style="margin-left: 8px;">—</span>
+            <h2 class="panel-title">ห้องวิเคราะห์เจาะลึกหุ้นที่เลือก (Selected Stock Analysis Studio)</h2>
+            <div class="panel-subtitle">กราฟ Candlestick เต็มตา + 5 เสาหลัก Quant Score + คำแนะนำมือใหม่ + สถิติความผันผวน</div>
           </div>
-          <div style="display:flex; align-items:center; gap: 12px;">
-            <span class="studio-price" id="stPrice">—</span>
-            <span id="stBadge" class="tag-badge alpha-buy">—</span>
-            <span id="stScoreBadge" class="score-badge score-s">—</span>
-          </div>
+          <button type="button" class="btn btn-sm secondary" id="scrollToTableBtn">↑ กลับไปตารางสแกนเนอร์</button>
         </div>
-
-        <div class="studio-grid">
-          <!-- 5-Pillar Score Breakdown -->
-          <div>
-            <div style="font-size: 11px; font-weight: 850; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-mono); margin-bottom: 8px;">
-              5-Pillar Quantitative Composite Breakdown (0–100)
-            </div>
-
-            <div class="pillar-row">
-              <div class="pillar-head">
-                <span>1. Volatility Regime &amp; Lifespan (30 pts)</span>
-                <span class="pillar-score" id="stScoreRegime">— / 30</span>
-              </div>
-              <div class="bar-track"><div id="stBarRegime" class="bar-fill-sqz" style="width: 0%;"></div></div>
-              <div class="pillar-reason" id="stReasonRegime">—</div>
-            </div>
-
-            <div class="pillar-row">
-              <div class="pillar-head">
-                <span>2. Trend Confluence &amp; Breakout 40D (25 pts)</span>
-                <span class="pillar-score" id="stScoreTrend">— / 25</span>
-              </div>
-              <div class="bar-track"><div id="stBarTrend" class="bar-fill-exp" style="width: 0%;"></div></div>
-              <div class="pillar-reason" id="stReasonTrend">—</div>
-            </div>
-
-            <div class="pillar-row">
-              <div class="pillar-head">
-                <span>3. Statistical Volatility Lift &amp; EDA (20 pts)</span>
-                <span class="pillar-score" id="stScoreEda">— / 20</span>
-              </div>
-              <div class="bar-track"><div id="stBarEda" class="bar-fill-cool" style="width: 0%;"></div></div>
-              <div class="pillar-reason" id="stReasonEda">—</div>
-            </div>
-
-            <div class="pillar-row">
-              <div class="pillar-head">
-                <span>4. Structural S/R &amp; SMA20 Support (15 pts)</span>
-                <span class="pillar-score" id="stScoreStructural">— / 15</span>
-              </div>
-              <div class="bar-track"><div id="stBarStructural" class="bar-fill-exp" style="width: 0%;"></div></div>
-              <div class="pillar-reason">ราคาอยู่เหนือ SMA20 พร้อมแนวรับแข็งแกร่ง</div>
-            </div>
-
-            <div class="pillar-row">
-              <div class="pillar-head">
-                <span>5. Market Quality &amp; Liquidity (10 pts)</span>
-                <span class="pillar-score" id="stScoreQuality">— / 10</span>
-              </div>
-              <div class="bar-track"><div id="stBarQuality" class="bar-fill-bull" style="width: 0%;"></div></div>
-              <div class="pillar-reason">สภาพคล่องสูงในกลุ่มดัชนี Nasdaq-100</div>
-            </div>
-
-            <div class="playbook-card">
-              <div class="playbook-title">[STRATEGY PLAYBOOK · แผนการเทรด]</div>
-              <div class="playbook-text" id="stPlaybook">—</div>
-            </div>
-          </div>
-
-          <!-- Forward 2SD Volatility Cone Chart -->
-          <div>
-            <div class="chart-box">
-              <div class="chart-title">
-                <span>Forward 2SD Volatility Cone (60-Day Probability Band)</span>
-                <span id="stVolAnn" style="color: var(--teal-bright); font-family: var(--font-mono);">Ann Vol: —%</span>
-              </div>
-              <svg id="coneSvgChart" class="cone-chart" viewBox="0 0 600 260" preserveAspectRatio="none">
-                <!-- SVG elements dynamically generated -->
-              </svg>
-              <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:10.5px; font-family:var(--font-mono); color:var(--text-muted);">
-                <span>Day 0 (Current)</span>
-                <span>Day 15</span>
-                <span>Day 30</span>
-                <span>Day 45</span>
-                <span>Day 60</span>
-              </div>
-            </div>
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
-              <div class="forecast-card">
-                <span class="f-label">Expected Range 30-Day (&plusmn;2&sigma;)</span>
-                <span class="f-val" id="stRange30" style="font-size: 14px;">—</span>
-              </div>
-              <div class="forecast-card">
-                <span class="f-label">Expected Range 60-Day (&plusmn;2&sigma;)</span>
-                <span class="f-val" id="stRange60" style="font-size: 14px;">—</span>
-              </div>
-            </div>
-          </div>
+        <div id="selectedPanel" class="detail-body studio-body">
+          <!-- Dynamically Rendered by app.js -->
         </div>
       </section>
 
@@ -836,7 +905,7 @@ svg.cone-chart { width: 100%; height: 260px; overflow: visible; }
         <h3 style="font-size:15px; font-weight:850; color:var(--text-primary); margin-top:20px;">2. ระบบคะแนน 5 เสาหลัก (5-Pillar Quant Composite Score)</h3>
         <ul style="color:var(--text-secondary); line-height:1.8;">
           <li><strong>Pillar 1: Volatility Regime &amp; Lifespan (30 คะแนน)</strong> &mdash; ให้คะแนนสูงเป็นพิเศษเมื่อเป็น Fresh Release หรือบีบตัวลึกรอบปี (Percentile &le; 20%) พร้อมอายุการบีบตัวที่สะสมพลังงานมาเพียงพอ</li>
-          <li><strong>Pillar 2: Trend Confluence &amp; Breakout 40D (25 คะแนน)</strong> &mdash; ตรวจสอบโมเมนตัม EMA12 &gt; EMA26 และระยะห่างจาก High 40 วัน ยิ่งจ่อเบรกไฮ (< 2%) ยิ่งได้คะแนนเต็ม</li>
+          <li><strong>Pillar 2: Trend Confluence &amp; Breakout 40D (25 คะแนน)</strong> &mdash; ตรวจสอบโมเมนตัม EMA12 &gt; EMA26 และระยะห่างจาก High 40 วัน ยิ่งจ่อเบรกไฮ (&lt; 2%) ยิ่งได้คะแนนเต็ม</li>
           <li><strong>Pillar 3: Statistical Volatility Lift &amp; EDA (20 คะแนน)</strong> &mdash; ตรวจสอบพฤติกรรมความผันผวนในอดีตหลังเกิด Release ว่ามี Win-rate และ Lift ที่ได้เปรียบทางสถิติ</li>
           <li><strong>Pillar 4: Structural Support &amp; SMA20 (15 คะแนน)</strong> &mdash; ยืนเหนือค่าเฉลี่ย SMA20 ยืนยันโครงสร้างราคาไม่เสียทรง</li>
           <li><strong>Pillar 5: Market Quality &amp; Liquidity (10 คะแนน)</strong> &mdash; มูลค่าซื้อขายและสภาพคล่องสถาบันในกลุ่ม Nasdaq-100</li>
